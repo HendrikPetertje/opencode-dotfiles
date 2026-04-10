@@ -113,11 +113,19 @@ Skills are loaded on demand when a task matches their description.
 
 | Skill | Purpose |
 |-------|---------|
+| `caveman` | Ultra-compressed communication mode — drops filler, articles, hedging. Multiple intensity levels including wenyan (文言文) |
 | `humanizer` | Strips AI writing patterns from text |
 | `mermaid-diagrams` | Mermaid diagram syntax guide with references |
 | `skill-judge` | Evaluates SKILL.md quality (120-point rubric) |
 | `writing-clearly-and-concisely` | Strunk & White rules for clear prose |
 | `content-research-writer` | Research-backed content writing workflow |
+
+## Slash commands
+
+| Command | Description |
+|---------|-------------|
+| `/caveman` | Activates caveman communication mode |
+| `/caveman-compress` | One-shot caveman-style context compression |
 
 ## MCP servers
 
@@ -160,4 +168,4 @@ The Peva build and plan agents use AIM (AI Memory) — a persistent knowledge gr
 
 ---
 
-Last updated at commit `ef9730a`.
+Last updated at commit `a4b87de`.
