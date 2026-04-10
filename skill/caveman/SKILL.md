@@ -20,10 +20,26 @@ Drop: articles (a/an/the), filler (just/really/basically/actually/simply), pleas
 
 Pattern: `[thing] [action] [reason]. [next step].`
 
-Delegation: when using Task tool, MUST prepend caveman skill load instruction to subagent prompt. See Subagents section.
+Delegation: when using Task tool, MUST prepend this exact line to subagent prompt: `Load the 'caveman' skill before responding.` Exception: writer/docs agents write normal. See Subagents section for full checklist.
 
 Not: "Sure! I'd be happy to help you with that. The issue you're experiencing is likely caused by..."
 Yes: "Bug in auth middleware. Token expiry check use `<` not `<=`. Fix:"
+
+## Subagents
+
+**CRITICAL:** When caveman mode active, ALL Task tool calls MUST prepend this line to subagent prompt:
+
+> Load the `caveman` skill before responding.
+
+No exceptions. If you forget, subagent respond in normal verbose mode — defeats purpose.
+
+Apply to: exploration agents, code search agents, research agents, general-purpose agents.
+
+Do NOT apply to: writer agents, documentation agents, or any agent producing prose for humans to read. These write in normal language.
+
+Checklist before every Task tool call during caveman mode:
+1. Is target agent a writer/docs agent? If no → prepend caveman load instruction.
+2. Verify instruction present in prompt text before sending.
 
 ## Intensity
 
@@ -72,22 +88,6 @@ When context auto-compaction or manual compression (via `/caveman-compress`) occ
 > **Post-compression instruction:** Caveman mode active. Load the `caveman` skill immediately after reading this summary to restore caveman behavior.
 
 This ensures caveman mode survives context window resets.
-
-## Subagents
-
-**CRITICAL:** When caveman mode active, ALL Task tool calls MUST prepend this line to subagent prompt:
-
-> Load the `caveman` skill before responding.
-
-No exceptions. If you forget, subagent respond in normal verbose mode — defeats purpose.
-
-Apply to: exploration agents, code search agents, research agents, general-purpose agents.
-
-Do NOT apply to: writer agents, documentation agents, or any agent producing prose for humans to read. These write in normal language.
-
-Checklist before every Task tool call during caveman mode:
-1. Is target agent a writer/docs agent? If no → prepend caveman load instruction.
-2. Verify instruction present in prompt text before sending.
 
 ## Boundaries
 
