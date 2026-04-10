@@ -103,6 +103,7 @@ memory management instructions.
 | `dev/review` | Code quality review | Read-only, no bash |
 | `dev/security-auditor` | OWASP security auditing | Read-only, no bash |
 | `other/general-researcher` | Non-dev research | Web fetch, no code tools |
+| `other/writer` | Documentation, prose, READMEs, blog posts | Read-only, no bash, no code |
 
 The build and plan agents delegate to the subagents (`explore`, `review`, `security-auditor`) as needed.
 
@@ -156,3 +157,7 @@ The Peva build and plan agents use AIM (AI Memory) — a persistent knowledge gr
 - **Global** — personal context that persists across all projects
 - **Project-local** — per-repo observations stored in `.aim/` (gitignored)
 - **Work-log** — dated action history in a separate `work-log` context
+
+---
+
+Last updated at commit `ef9730a`.
