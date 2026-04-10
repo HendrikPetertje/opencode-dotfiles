@@ -42,7 +42,14 @@ function opoc() {
 
 The `source` path should point to wherever your secrets manager (1Password, etc.) mounts env files. Users will be prompted for access when the file is sourced.
 
-Then clone this repo to `~/.config/opencode` and run `opoc`. On first launch, OpenCode auto-generates `package.json` and installs plugin dependencies automatically — no manual `npm install` needed.
+Then clone this repo and run `opoc`:
+
+```bash
+git clone https://git.hendrikpeter.net/hendrikpeter/opencode-dotfiles.git ~/.config/opencode
+opoc
+```
+
+On first launch, OpenCode auto-generates `package.json` and installs plugin dependencies automatically — no manual `npm install` needed.
 
 ## What's tracked
 
