@@ -23,35 +23,91 @@
     },
   },
   "provider": {
-    "ollama": {
+    "llama.cpp": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "llama-server (local)",
+      "options": {
+        "baseURL": "http://127.0.0.1:8080/v1"
+      },
       "models": {
-        "gemma4-26b-fast": {
-          "name": "Gemma4 26b (fast)",
-          "id": "gemma4:26b",
+        "qwen3.5-27b-fast": {
+          "name": "Qwen3.5 27B Q4_K_M (fast)",
+          "id": "Qwen3.5-27B-Q4_K_M.gguf",
+          "tool_call": true,
+          "reasoning": false,
+          "limit": {
+            "context": 120000,
+            "output": 8192
+          },
           "options": {
             "reasoningEffort": "none"
           }
         },
-        "gemma4-26b-think": {
-          "name": "Gemma4 26b (think)",
-          "id": "gemma4:26b"
+        "qwen3.5-27b-think": {
+          "name": "Qwen3.5 27B Q4_K_M (think)",
+          "id": "Qwen3.5-27B-Q4_K_M.gguf",
+          "tool_call": true,
+          "reasoning": true,
+          "limit": {
+            "context": 120000,
+            "output": 8192
+          },
+          "options": {
+            "reasoningEffort": "low"
+          }
+        },
+        "qwen3.5-4b-fast": {
+          "name": "Qwen3.5 4B Q8_0 (fast)",
+          "id": "Qwen3.5-4B-Q8_0.gguf",
+          "tool_call": true,
+          "reasoning": false,
+          "limit": {
+            "context": 120000,
+            "output": 8192
+          },
+          "options": {
+            "reasoningEffort": "none"
+          }
+        },
+        "qwen3.5-4b-think": {
+          "name": "Qwen3.5 4B Q8_0 (think)",
+          "id": "Qwen3.5-4B-Q8_0.gguf",
+          "tool_call": true,
+          "reasoning": true,
+          "limit": {
+            "context": 120000,
+            "output": 8192
+          },
+          "options": {
+            "reasoningEffort": "low"
+          }
         },
         "gemma4-fast": {
-          "name": "Gemma4 (fast)",
-          "id": "gemma4",
+          "name": "Gemma4 26B MXFP4_MOE (fast)",
+          "id": "gemma-4-26B-A4B-it-MXFP4_MOE.gguf",
+          "tool_call": true,
+          "reasoning": false,
+          "limit": {
+            "context": 120000,
+            "output": 8192
+          },
           "options": {
             "reasoningEffort": "none"
           }
         },
         "gemma4-think": {
-          "name": "Gemma4 (think)",
-          "id": "gemma4"
+          "name": "Gemma4 26B MXFP4_MOE (think)",
+          "id": "gemma-4-26B-A4B-it-MXFP4_MOE.gguf",
+          "tool_call": true,
+          "reasoning": true,
+          "limit": {
+            "context": 120000,
+            "output": 8192
+          },
+          "options": {
+            "reasoningEffort": "low"
+          }
         }
-      },
-      "name": "Ollama",
-      "npm": "@ai-sdk/openai-compatible",
-      "options": {
-        "baseURL": "http://127.0.0.1:11434/v1"
       }
     },
     "anthropic": {
