@@ -49,21 +49,26 @@ Reach for markitdown when you encounter a file that isn't already plain text or 
 | EPub | `.epub` |
 | YouTube | YouTube URLs (fetches transcript) |
 
-For files that are already plain text, Markdown, or source code — just read them directly. markitdown adds no value there.
+
+Skip markitdown when:
+- The file is already plain text, Markdown, or source code — just read it directly.
+- Your agent tooling natively handles the format (e.g. built-in PDF or image reading). Native tooling preserves visual layout and embedded content better than a text conversion. Prefer it when available; fall back to markitdown for formats your tools can't open.
 
 ## Decision Flow
 
 ```
 Is the file plain text, Markdown, or source code?
   YES → Read directly, skip markitdown
-  NO  → Run: markitdown <file>
-         ├─ Success → Use the Markdown output as context
-         └─ Failure (command not found / permission error)
-              → Do NOT install it yourself
-              → Tell the user to install it:
-                 "With Python and pipx available, run:
-                  pipx install 'markitdown[all]'"
-              → Explain why you need it and what file you were trying to convert
+  NO  → Can your agent tools natively read this format (e.g. PDF, images)?
+         YES → Use native tooling (better fidelity for layout & embedded content)
+         NO  → Run: markitdown <file>
+                ├─ Success → Use the Markdown output as context
+                └─ Failure (command not found / permission error)
+                     → Do NOT install it yourself
+                     → Tell the user to install it:
+                        "With Python and pipx available, run:
+                         pipx install 'markitdown[all]'"
+                     → Explain why you need it and what file you were trying to convert
 ```
 
 ## NEVER
