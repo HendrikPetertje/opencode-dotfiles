@@ -68,12 +68,13 @@ Is the file plain text, Markdown, or source code?
                      → Tell the user to install it:
                         "With Python and pipx available, run:
                          pipx install 'markitdown[all]'"
+                        See https://github.com/microsoft/markitdown
                      → Explain why you need it and what file you were trying to convert
 ```
 
 ## NEVER
 
-- **NEVER install markitdown yourself** — Python environments vary (system, venv, version managers). Always provide the install command and let the user handle it: `pipx install "markitdown[all]"`
+- **NEVER install markitdown yourself** — Python environments vary (system, venv, version managers). Always provide the install command and let the user handle it: `pipx install "markitdown[all]"` (see https://github.com/microsoft/markitdown)
 - **NEVER try to read binary files (PDF, DOCX, PPTX, XLSX) directly** with file-read tools — you'll get garbage. Convert first.
 - **NEVER run markitdown on files that are already text/Markdown/code** — it's pointless overhead.
 - **NEVER assume markitdown is installed** — check by running it; handle failure gracefully per the decision flow above.
