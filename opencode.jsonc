@@ -30,82 +30,31 @@
         "baseURL": "http://127.0.0.1:8080/v1"
       },
       "models": {
-        "qwen3.5-27b-fast": {
-          "name": "Qwen3.5 27B Q4_K_M (fast)",
-          "id": "Qwen3.5-27B-Q4_K_M.gguf",
+        "gemma4-4b": {
+          "name": "Gemma4 E4B Q8_0",
+          "id": "gemma-4-E4B-it-Q8_0.gguf",
           "tool_call": true,
-          "reasoning": false,
           "limit": {
-            "context": 120000,
+            "context": 128000,
             "output": 8192
-          },
-          "options": {
-            "reasoningEffort": "none"
           }
         },
-        "qwen3.5-27b-think": {
-          "name": "Qwen3.5 27B Q4_K_M (think)",
-          "id": "Qwen3.5-27B-Q4_K_M.gguf",
-          "tool_call": true,
-          "reasoning": true,
-          "limit": {
-            "context": 120000,
-            "output": 8192
-          },
-          "options": {
-            "reasoningEffort": "low"
-          }
-        },
-        "qwen3.5-4b-fast": {
-          "name": "Qwen3.5 4B Q8_0 (fast)",
-          "id": "Qwen3.5-4B-Q8_0.gguf",
-          "tool_call": true,
-          "reasoning": false,
-          "limit": {
-            "context": 120000,
-            "output": 8192
-          },
-          "options": {
-            "reasoningEffort": "none"
-          }
-        },
-        "qwen3.5-4b-think": {
-          "name": "Qwen3.5 4B Q8_0 (think)",
-          "id": "Qwen3.5-4B-Q8_0.gguf",
-          "tool_call": true,
-          "reasoning": true,
-          "limit": {
-            "context": 120000,
-            "output": 8192
-          },
-          "options": {
-            "reasoningEffort": "low"
-          }
-        },
-        "gemma4-fast": {
-          "name": "Gemma4 26B MXFP4_MOE (fast)",
+        "gemma4-26b": {
+          "name": "Gemma4 26B MXFP4_MOE",
           "id": "gemma-4-26B-A4B-it-MXFP4_MOE.gguf",
           "tool_call": true,
-          "reasoning": false,
           "limit": {
-            "context": 120000,
+            "context": 256000,
             "output": 8192
-          },
-          "options": {
-            "reasoningEffort": "none"
           }
         },
-        "gemma4-think": {
-          "name": "Gemma4 26B MXFP4_MOE (think)",
-          "id": "gemma-4-26B-A4B-it-MXFP4_MOE.gguf",
+        "qwen3.6-27b": {
+          "name": "Qwen3.6 27B Q3_K_M",
+          "id": "Qwen3.6-27B-Q3_K_M.gguf",
           "tool_call": true,
-          "reasoning": true,
           "limit": {
             "context": 120000,
             "output": 8192
-          },
-          "options": {
-            "reasoningEffort": "low"
           }
         }
       }
