@@ -3,7 +3,7 @@
   "keybinds": {
     "leader": "ctrl+o",
     "editor_open": "<leader>e",
-    "input_submit": "enter",
-    "input_newline": "alt+enter,ctrl+j",
+    "input_submit": "return",
+    "input_newline": "alt+return,ctrl+j"
   }
 }
