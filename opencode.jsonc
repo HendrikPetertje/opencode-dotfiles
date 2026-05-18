@@ -23,35 +23,38 @@
     },
   },
   "provider": {
-    "llama.cpp": {
+    "lmstudio": {
       "npm": "@ai-sdk/openai-compatible",
-      "name": "llama-server (local)",
+      "name": "LM Studio (local)",
       "options": {
-        "baseURL": "http://127.0.0.1:8080/v1"
+        "baseURL": "http://127.0.0.1:1234/v1"
       },
       "models": {
-        "gemma4-4b": {
-          "name": "Gemma4 E4B Q8_0",
-          "id": "gemma-4-E4B-it-Q8_0.gguf",
-          "tool_call": true,
-          "limit": {
-            "context": 128000,
-            "output": 8192
-          }
-        },
-        "gemma4-26b": {
-          "name": "Gemma4 26B MXFP4_MOE",
-          "id": "gemma-4-26B-A4B-it-MXFP4_MOE.gguf",
-          "tool_call": true,
-          "limit": {
-            "context": 256000,
-            "output": 8192
-          }
-        },
         "qwen3.6-27b": {
-          "name": "Qwen3.6 27B Q3_K_M",
-          "id": "Qwen3.6-27B-Q3_K_M.gguf",
+          "name": "Qwen 3.6 27B (LM Studio)",
           "tool_call": true,
+          "reasoning": true,
+          "interleaved": { "field": "reasoning_content" },
+          "limit": {
+            "context": 120000,
+            "output": 8192
+          }
+        },
+        "gemma-4-26b-a4b-it": {
+          "name": "Gemma 4 26B A4B (LM Studio)",
+          "tool_call": true,
+          "reasoning": true,
+          "interleaved": { "field": "reasoning_content" },
+          "limit": {
+            "context": 120000,
+            "output": 8192
+          }
+        },
+        "gemma-4-e4b-it": {
+          "name": "Gemma 4 E4B (LM Studio)",
+          "tool_call": true,
+          "reasoning": true,
+          "interleaved": { "field": "reasoning_content" },
           "limit": {
             "context": 120000,
             "output": 8192
@@ -83,7 +86,8 @@
     "Sanity_*": "ask",
     "chrome-devtools_*": "ask",
     "context7_*": "ask",
-    "github_*": "ask"
+    "github_*": "ask",
+    "obsidian_*": "allow"
   },
   "mcp": {
     "aws-knowledge-mcp-server": {
@@ -207,7 +211,8 @@
         "mcp-knowledge-graph",
         "--memory-path",
         "{env:AIM_GLOBAL_PATH}"
-      ]
+      ],
+      "enabled": false
     },
     "notion": {
       "type": "local",
@@ -251,6 +256,21 @@
     "tavily": {
       "type": "remote",
       "url": "https://mcp.tavily.com/mcp/?tavilyApiKey={env:TAVILY_API_KEY}",
+      "enabled": false
+    },
+    "obsidian": {
+      "type": "local",
+      "command": [
+        "podman",
+        "run",
+        "--rm",
+        "-i",
+        "--network",
+        "host",
+        "--env",
+        "OBSIDIAN_API_KEY={env:OBSIDIAN_API_KEY}",
+        "peva-obsidian-mcp:latest"
+      ],
       "enabled": false
     },
     "time": {
