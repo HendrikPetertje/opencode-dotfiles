@@ -34,7 +34,9 @@
           "name": "Qwen 3.6 27B (LM Studio)",
           "tool_call": true,
           "reasoning": true,
-          "interleaved": { "field": "reasoning_content" },
+          "interleaved": {
+            "field": "reasoning_content"
+          },
           "limit": {
             "context": 120000,
             "output": 8192
@@ -44,7 +46,9 @@
           "name": "Gemma 4 26B A4B (LM Studio)",
           "tool_call": true,
           "reasoning": true,
-          "interleaved": { "field": "reasoning_content" },
+          "interleaved": {
+            "field": "reasoning_content"
+          },
           "limit": {
             "context": 120000,
             "output": 8192
@@ -54,7 +58,9 @@
           "name": "Gemma 4 E4B (LM Studio)",
           "tool_call": true,
           "reasoning": true,
-          "interleaved": { "field": "reasoning_content" },
+          "interleaved": {
+            "field": "reasoning_content"
+          },
           "limit": {
             "context": 120000,
             "output": 8192
@@ -79,6 +85,52 @@
         "store": false
       }
     },
+    "kiro": {
+      "npm": "kiro-ai-provider",
+      "name": "Kiro",
+      "models": {
+        "claude-opus-4.8": {
+          "name": "Claude Opus 4.8 (Kiro)",
+          "attachment": true,
+          "reasoning": true,
+          "tool_call": true,
+          "temperature": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 1000000,
+            "output": 64000
+          }
+        },
+        "claude-sonnet-4.6": {
+          "name": "Claude Sonnet 4.6 (Kiro)",
+          "attachment": true,
+          "reasoning": true,
+          "tool_call": true,
+          "temperature": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 1000000,
+            "output": 64000
+          }
+        }
+      }
+    }
   },
   "permission": {
     "*": "allow",
