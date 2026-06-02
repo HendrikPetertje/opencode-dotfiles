@@ -25,6 +25,10 @@ export const RtkOpenCodePlugin: Plugin = async ({ $ }) => {
       const command = (args as Record<string, unknown>).command
       if (typeof command !== "string" || !command) return
 
+      // Skip rewriting for commands that rtk mishandles (e.g. biome-based lint)
+      const skipPatterns = ["pnpm", "npm"]
+      if (skipPatterns.some((p) => command.startsWith(p))) return
+
       try {
         const result = await $`rtk rewrite ${command}`.quiet().nothrow()
         const rewritten = String(result.stdout).trim()

@@ -1,6 +1,7 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "autoupdate": true,
+  "instructions": ["AGENTS.md"],
   "server": {
     "port": 4096
   },
@@ -335,7 +336,19 @@
         "peva-time-mcp:latest"
       ],
       "enabled": true
+    },
+    "agentmemory": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@agentmemory/mcp"
+      ],
+      "env": {
+        "AGENTMEMORY_URL": "http://localhost:3111"
+      },
+      "enabled": true
     }
   },
-  "plugin": []
+  "plugin": ["./plugins/agentmemory-capture.ts"]
 }
