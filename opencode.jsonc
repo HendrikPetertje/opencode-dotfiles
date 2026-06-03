@@ -10,6 +10,7 @@
   // Don't share sessions with others automatically
   "share": "manual",
   "default_agent": "plan",
+  "lsp": true,
   "agent": {
     // Some models don't need to be running OPUS al the time.
     // I could hard-code here, but i use the same config files on different machines
