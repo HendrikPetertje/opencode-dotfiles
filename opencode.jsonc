@@ -1,7 +1,9 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "autoupdate": true,
-  "instructions": ["AGENTS.md"],
+  "instructions": [
+    "AGENTS.md"
+  ],
   "server": {
     "port": 4096
   },
@@ -344,11 +346,13 @@
         "-y",
         "@agentmemory/mcp"
       ],
-      "env": {
+      "environment": {
         "AGENTMEMORY_URL": "http://localhost:3111"
       },
       "enabled": true
     }
   },
-  "plugin": ["./plugins/agentmemory-capture.ts"]
+  "plugin": [
+    "./plugins/agentmemory-capture.ts"
+  ]
 }
