@@ -138,7 +138,7 @@
   },
   "permission": {
     "*": "allow",
-    "Notion_*": "ask",
+    "notion_*": "ask",
     "Sanity_*": "ask",
     "chrome-devtools_*": "ask",
     "context7_*": "ask",
@@ -278,7 +278,7 @@
         "--rm",
         "-i",
         "--env",
-        "NOTION_API_TOKEN={env:NOTION_API_TOKEN}",
+        "NOTION_TOKEN={env:NOTION_API_TOKEN}",
         "peva-notion-mcp:latest"
       ],
       "enabled": false
