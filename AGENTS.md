@@ -2,7 +2,7 @@
 
 You have access to agentmemory for persistent cross-session memory. Use it proactively without waiting for the user to ask.
 
-MANDATORY FIRST ACTION: Before responding to THE FIRST (or whenever you feel unsure) user message, you MUST call `memory_recall` twice (once for user preferences, once for project context at the current session's project path). Do NOT skip this. Do NOT respond or take any other action until both memory lookups complete. The ONLY exception is when the user explicitly tells you not to load memory. See the "On session start" section below for details.
+MANDATORY FIRST ACTION: Before responding to THE FIRST (or whenever you feel unsure) user message, you MUST scan memory along two axes (user preferences, and project context at the current session's project path) using the lean retrieval flow in the "On session start" section below. Do NOT skip this. Do NOT respond or take any other action until both lookups complete. The ONLY exception is when the user explicitly tells you not to load memory.
 
 ## On session start
 
@@ -10,12 +10,13 @@ CRITICAL FIRST STEP - BEFORE ANY RESPONSE: Always perform the memory lookups bel
 
 At the beginning of every session, before diving into the user's request:
 
-1. Do not rely on a single vague `memory_smart_search` call. Start with two targeted lookups:
+1. Lead with `memory_smart_search` to scan along both axes (user preferences/workflow, and project context at the current session's full absolute path). It returns titles + observation IDs only (~150 tokens), so use it to see what is relevant before pulling any detail.
+2. Pull detail with `memory_recall` using `format: "narrative"` and a `token_budget` (~600 per call). Run it along the same two axes:
    - A user-wide recall for preferences and workflow rules using terms like `code style`, `tool preferences`, `build rules`, `testing patterns`, and keywords from the user's first message.
    - A project-context recall using the current session project's full absolute path plus stack, convention, architecture, bug, and file/module keywords that match the user's first message.
-2. Use `memory_smart_search` only as a follow-up when you need broader discovery after the targeted recalls.
-3. Apply useful recalled context silently by default. Only mention remembered context when the user asks, when it is necessary to resolve ambiguity, or when surfacing it prevents a likely mistake.
-4. If the project is new or unfamiliar, ask the user about their preferences, conventions, and context -- then save those with `memory_save`.
+3. Only request `format: "full"` for a specific hit when narrative is insufficient (e.g. you need the exact files, facts, or concepts). Never default to full-format bulk recall.
+4. Apply useful recalled context silently by default. Only mention remembered context when the user asks, when it is necessary to resolve ambiguity, or when surfacing it prevents a likely mistake.
+5. If the project is new or unfamiliar, ask the user about their preferences, conventions, and context -- then save those with `memory_save`.
 
 ## During work
 
@@ -61,3 +62,35 @@ If memory is sparse for the current project, proactively ask:
 - "Is there anything from past work on this codebase I should keep in mind?"
 
 Then save their answers.
+
+# Docs memories & WIKI
+IMPORTANT: If you pull documentation, articles, pages or code samples from the internet (using tools like context7, fetch
+tool, confluence, etc.) then always do two things with this:
+
+- if LLM_WIKI_PATH is an exported variable in your session, store the file,
+  snippet or text as is as a markdown document in `${LLM_WIKI_PATH}/raw/[YYYY-MM-DD]-[filename].md`
+  at its top it should have the following properties:
+
+````
+---
+title: "Title of the document"
+source: "https://source"
+author: if applicable
+published: if applicable
+created: 2026-05-11
+description: "short description"
+tags:
+  - "too-[tool-name-you-used]"
+---
+[ACTUAL DOCUMENT HERE]
+````
+
+- Store a useful recap of the documentation as a memory (with date and
+  applicable version numbers if able) for future use.
+
+You can fetch docs and memories from memory at any time. Do NOT proactively
+search the LLM wiki on every task — reading the wiki costs context. Only consult
+it (via the wiki-knowledge-lookup skill) when the user explicitly asks to "go
+through the LLM wiki first". When you do look something up, keep it lightweight:
+scan `wiki/index.md`, grep for the specific keyword, and open only the few pages
+that match — never bulk-read the wiki "just in case".
