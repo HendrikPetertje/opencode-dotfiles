@@ -1,31 +1,18 @@
 ---
 name: source-driven-development
-description: Grounds every implementation decision in official documentation. Use when you want authoritative, source-cited code free from outdated patterns. Use when building with any framework or library where correctness matters.
+description: |
+  Verify framework-specific code against official documentation — fetch the
+  relevant page, cite it with a full URL, flag anything unverified. Training
+  data goes stale, old patterns get crawled more than migration guides, and
+  confidence increases with familiarity even as APIs get removed. This skill
+  counters that by grounding every decision in a source the user can check.
+  Use ONLY when the user explicitly says "source driven" or "source-driven development".
 license: MIT
 compatibility: opencode
-source: https://github.com/addyosmani/agent-skills/blob/main/skills/source-driven-development/SKILL.md
+source: adapted from https://github.com/addyosmani/agent-skills/blob/main/skills/source-driven-development/SKILL.md
 ---
 
 # Source-Driven Development
-
-## Overview
-
-Every framework-specific code decision must be backed by official documentation. Don't implement from memory — verify, cite, and let the user see your sources. Training data goes stale, APIs get deprecated, best practices evolve. This skill ensures the user gets code they can trust because every pattern traces back to an authoritative source they can check.
-
-## When to Use
-
-- The user wants code that follows current best practices for a given framework
-- Building boilerplate, starter code, or patterns that will be copied across a project
-- The user explicitly asks for documented, verified, or "correct" implementation
-- Implementing features where the framework's recommended approach matters (forms, routing, data fetching, state management, auth)
-- Reviewing or improving code that uses framework-specific patterns
-- Any time you are about to write framework-specific code from memory
-
-**When NOT to use:**
-
-- Correctness does not depend on a specific version (renaming variables, fixing typos, moving files)
-- Pure logic that works the same across all versions (loops, conditionals, data structures)
-- The user explicitly wants speed over verification ("just do it quickly")
 
 ## The Process
 
@@ -174,24 +161,19 @@ Honesty about what you couldn't verify is more valuable than false confidence.
 
 ## Red Flags
 
-- Writing framework-specific code without checking the docs for that version
-- Using "I believe" or "I think" about an API instead of citing the source
-- Implementing a pattern without knowing which version it applies to
-- Citing Stack Overflow or blog posts instead of official documentation
-- Using deprecated APIs because they appear in training data
-- Not reading `package.json` / dependency files before implementing
-- Delivering code without source citations for framework-specific decisions
-- Fetching an entire docs site when only one page is relevant
+- Writing framework-specific code without checking the docs for that version — even one major version gap can mean different hooks, renamed APIs, or removed methods
+- Using "I believe" or "I think" about an API instead of citing the source — hedging signals training data, not verification; a disclaimer doesn't make stale code safe
+- Implementing a pattern without knowing which version it applies to — the same function can have a completely different signature across versions (e.g. React Router v5 vs v6)
+- Citing Stack Overflow or blog posts instead of official documentation — answers get upvoted once and stay visible for years after the API changes
+- Using deprecated APIs because they appear in training data — training corpora over-represent old patterns; a 3-year-old Stack Overflow answer gets crawled far more than today's migration guide, so confidence *increases* with familiarity even as the API gets removed
+- Not reading `package.json` / dependency files before implementing — without the exact version you don't know which doc page applies
+- Delivering code without source citations for framework-specific decisions — the user can't verify what they can't trace
+- Fetching an entire docs site when only one page is relevant — site-level fetches typically return the *latest* version's docs, silently giving you the wrong patterns when your dependency file pins an older release
 
 ## Verification
 
-After implementing with source-driven development:
-
-- [ ] Framework and library versions were identified from the dependency file
-- [ ] Official documentation was fetched for framework-specific patterns
-- [ ] All sources are official documentation, not blog posts or training data
-- [ ] Code follows the patterns shown in the current version's documentation
-- [ ] Non-trivial decisions include source citations with full URLs
-- [ ] No deprecated APIs are used (checked against migration guides)
+- [ ] Dependency file was read and the exact version was identified before fetching docs
+- [ ] The doc page fetched matches the *exact version* in the dependency file — not the latest docs, not the default landing page
+- [ ] All citations use full URLs with deep anchors where available
 - [ ] Conflicts between docs and existing code were surfaced to the user
 - [ ] Anything that could not be verified is explicitly flagged as unverified
