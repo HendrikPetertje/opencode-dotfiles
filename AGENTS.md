@@ -94,3 +94,9 @@ it (via the wiki-knowledge-lookup skill) when the user explicitly asks to "go
 through the LLM wiki first". When you do look something up, keep it lightweight:
 scan `wiki/index.md`, grep for the specific keyword, and open only the few pages
 that match — never bulk-read the wiki "just in case".
+
+## GIT
+- GH cli is installed and logged in.
+- The user has GPG signing on their commits and all commits should be signed.
+  Don't commit unless the user explicitly asks you to. write commit message =
+  output a commit message the user can copy-paste
