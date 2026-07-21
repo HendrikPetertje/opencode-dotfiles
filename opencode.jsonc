@@ -93,8 +93,8 @@
       "npm": "kiro-ai-provider",
       "name": "Kiro",
       "models": {
-        "claude-opus-4.8": {
-          "name": "Claude Opus 4.8 (Kiro)",
+        "claude-opus-4.6": {
+          "name": "Claude Opus 4.6 (Kiro)",
           "attachment": true,
           "reasoning": true,
           "tool_call": true,
