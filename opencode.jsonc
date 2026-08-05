@@ -90,11 +90,11 @@
       }
     },
     "kiro": {
-      "npm": "kiro-ai-provider",
+      "npm": "kiro-acp-ai-provider",
       "name": "Kiro",
       "models": {
-        "claude-opus-4.6": {
-          "name": "Claude Opus 4.6 (Kiro)",
+        "claude-opus-5": {
+          "name": "Claude Opus 5 (Kiro)",
           "attachment": true,
           "reasoning": true,
           "tool_call": true,
@@ -110,11 +110,11 @@
           },
           "limit": {
             "context": 1000000,
-            "output": 64000
+            "output": 128000
           }
         },
-        "claude-sonnet-4.6": {
-          "name": "Claude Sonnet 4.6 (Kiro)",
+        "claude-sonnet-5": {
+          "name": "Claude Sonnet 5 (Kiro)",
           "attachment": true,
           "reasoning": true,
           "tool_call": true,

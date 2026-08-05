@@ -100,3 +100,9 @@ that match — never bulk-read the wiki "just in case".
 - The user has GPG signing on their commits and all commits should be signed.
   Don't commit unless the user explicitly asks you to. write commit message =
   output a commit message the user can copy-paste
+
+# Tooling
+- The user has ripgrep, grep and ag (silver searcher) installed. find is often
+  an extremely slow way to find things on the disk, especially in nodejs
+  projects with many dependencies.
+
