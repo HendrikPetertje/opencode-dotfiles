@@ -104,5 +104,5 @@ that match — never bulk-read the wiki "just in case".
 # Tooling
 - The user has ripgrep, grep and ag (silver searcher) installed. find is often
   an extremely slow way to find things on the disk, especially in nodejs
-  projects with many dependencies.
-
+  projects with many dependencies. DO NOT EVER USE THE "find" BASH COMMAND ON THE
+  LOCAL MACHINE.
