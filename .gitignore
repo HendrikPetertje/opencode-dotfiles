@@ -6,3 +6,4 @@ bun.lock
 .kiro
 
 /skill/vv-*
+/plugins/vv-*
