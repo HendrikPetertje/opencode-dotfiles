@@ -26,6 +26,9 @@
       "model": "{env:OPENCODE_BIG_MODEL}"
     },
   },
+  "disabled_providers": [
+    "opencode"
+  ],
   "provider": {
     "lmstudio": {
       "npm": "@ai-sdk/openai-compatible",
