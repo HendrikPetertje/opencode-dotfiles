@@ -101,7 +101,7 @@ scan `wiki/index.md`, grep for the specific keyword, and open only the few pages
 that match — never bulk-read the wiki "just in case".
 
 ## GIT
-- GH cli is installed and logged in.
+- GH cli is installed and logged in. (additionally jq is available too)
 - The user has GPG signing on their commits and all commits should be signed.
   Don't commit unless the user explicitly asks you to. write commit message =
   output a commit message the user can copy-paste
