@@ -7,3 +7,5 @@ bun.lock
 
 /skill/vv-*
 /plugins/vv-*
+
+.DS_Store
