@@ -1,0 +1,6 @@
+{
+  "name": "gemma-think",
+  "private": true,
+  "type": "module",
+  "exports": "./index.js"
+}

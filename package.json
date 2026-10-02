@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "@azure/msal-node": "^5.5.0",
+    "@opencode/plugin": "2.0.21"
+  },
+  "allowScripts": {
+    "msgpackr-extract": true
+  }
+}
