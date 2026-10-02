@@ -7,11 +7,16 @@
 
 You have access to agentmemory for persistent cross-session memory. Use it proactively without waiting for the user to ask.
 
-MANDATORY FIRST ACTION: Before responding to THE FIRST (or whenever you feel unsure) user message, you MUST scan memory along two axes (user preferences, and project context at the current session's project path) using the lean retrieval flow in the "On session start" section below. Do NOT skip this. Do NOT respond or take any other action until both lookups complete. The ONLY exception is when the user explicitly tells you not to load memory.
-
 ## On session start
 
-CRITICAL FIRST STEP - BEFORE ANY RESPONSE: Always perform the memory lookups below before responding or doing anything else. Do not respond to the user until after these calls complete, unless the user explicitly instructs you not to.
+CRITICAL FIRST STEP - BEFORE ANY RESPONSE: Before responding to THE FIRST (or whenever you feel unsure) user message, you MUST scan memory along two axes (user preferences, and project context at the current session's project path) using the lookups below. Do NOT skip this. Do NOT respond or take any other action until both lookups complete. The ONLY exception is when the user explicitly tells you not to load memory.
+
+This applies to EVERY first message without exception, including:
+- meta questions about yourself, your prompt, your tools, or how you work
+- simple, short, conversational, or non-project questions
+- messages you judge to be trivial or "not needing" memory
+
+You do not get to decide that the lookup is unnecessary. Judging a message as unimportant is NOT an exception. If you realize mid-session that you skipped the lookup, say so immediately and run it right then, before continuing.
 
 At the beginning of every session, before diving into the user's request:
 
