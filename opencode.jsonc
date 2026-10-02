@@ -117,46 +117,6 @@
         ],
         "store": false
       }
-    },
-    "kiro": {
-      "package": "aisdk:kiro-acp-ai-provider",
-      "name": "Kiro",
-      "models": {
-        "claude-opus-5": {
-          "name": "Claude Opus 5 (Kiro)",
-          "capabilities": {
-            "tools": true,
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "limit": {
-            "context": 1000000,
-            "output": 128000
-          }
-        },
-        "claude-sonnet-5": {
-          "name": "Claude Sonnet 5 (Kiro)",
-          "capabilities": {
-            "tools": true,
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "limit": {
-            "context": 1000000,
-            "output": 64000
-          }
-        }
-      }
     }
   },
   "permissions": [
