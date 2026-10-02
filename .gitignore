@@ -9,3 +9,5 @@ bun.lock
 /plugins/vv-*
 
 .DS_Store
+
+/service.json
