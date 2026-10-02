@@ -1,3 +1,7 @@
 [submodule "plugins/opencode-kiro-model-loader"]
 	path = plugins/opencode-kiro-model-loader
 	url = https://github.com/HendrikPetertje/opencode-kiro-model-loader.git
+[submodule "plugins/opencode-kiro"]
+	path = plugins/opencode-kiro
+	url = https://github.com/HendrikPetertje/opencode-kiro.git
+	branch = fix/opencode-2.0.22
