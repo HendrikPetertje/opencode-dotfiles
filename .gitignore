@@ -4,6 +4,7 @@ node_modules
 
 /skill/vv-*
 /plugins/vv-*
+/commands/vv-*
 
 .DS_Store
 
