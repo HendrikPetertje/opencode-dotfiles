@@ -3,6 +3,18 @@
 1. **Never run the `find` bash command, in any form, for any reason** (e.g. `find . -name`, `find -maxdepth`, piped into `find`, etc.). This includes as a fallback in `||`/`&&` chains. Use `rg --files -g '<pattern>'`, `ag -g '<pattern>'`, or the Glob tool instead. If you catch yourself about to type `find`, stop and substitute one of those instead.
 2. Never commit. GPG signing is enforced on this user's commits and AI agents cannot sign commits, so agents must never run `git commit` themselves — the user handles all commits. When asked, only draft a commit message for the user to copy-paste (see GIT section below).
 
+# Images and Binary Data
+
+- Do not inspect images, screenshots, or other binary/non-text assets directly in the primary agent session. Delegate that inspection to a subagent.
+- `lightweight-explorer` is the preferred subagent for this work. Ask it for a concise text-only description, transcription, or summary of the relevant content.
+- Do not forward image or binary payloads to the primary agent; use only the subagent's textual findings.
+
+# Controlled Chromium and Playwright
+
+- When a task needs a controlled Chromium or Playwright session, either delegate the entire browser interaction to `lightweight-explorer`, or save snapshots directly to files and ask the subagent to inspect them.
+- In the snapshot workflow, do not read or view the snapshot in the primary agent session. Keep browser output to a file path; if a tool would return visual content inline, delegate browser control instead.
+- Use only the subagent's text summary of the browser state or snapshot.
+
 # Agentmemory: Proactive Memory Usage
 
 You have access to agentmemory for persistent cross-session memory. Use it proactively without waiting for the user to ask.

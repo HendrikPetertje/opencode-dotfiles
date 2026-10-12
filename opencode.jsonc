@@ -151,6 +151,16 @@
       "action": "obsidian_*",
       "resource": "*",
       "effect": "allow"
+    },
+    {
+      "action": "agentmemory_memory_file_history",
+      "resource": "*",
+      "effect": "deny"
+    },
+    {
+      "action": "agentmemory_memory_claude_*",
+      "resource": "*",
+      "effect": "deny"
     }
   ],
   "plugins": [
@@ -186,6 +196,10 @@
       "chrome-devtools": {
         "type": "local",
         "command": [
+          "sh",
+          "-c",
+          "cd \"$HOME\" && exec \"$@\"",
+          "sh",
           "npx",
           "chrome-devtools-mcp@latest"
         ],
@@ -274,6 +288,10 @@
       "memory": {
         "type": "local",
         "command": [
+          "sh",
+          "-c",
+          "cd \"$HOME\" && exec \"$@\"",
+          "sh",
           "npx",
           "-y",
           "mcp-knowledge-graph",
@@ -298,6 +316,10 @@
       "playwright": {
         "type": "local",
         "command": [
+          "sh",
+          "-c",
+          "cd \"$HOME\" && exec \"$@\"",
+          "sh",
           "npx",
           "@playwright/mcp@latest"
         ],
@@ -319,7 +341,8 @@
           "--rm",
           "-i",
           "peva-sequentialthinking-mcp:latest"
-        ]
+        ],
+        "disabled": true
       },
       "tavily": {
         "type": "remote",
@@ -350,14 +373,14 @@
           "-i",
           "peva-time-mcp:latest"
         ],
-        "disabled": false
+        "disabled": true
       },
       "agentmemory": {
         "type": "local",
         "command": [
-          "npx",
-          "-y",
-          "@agentmemory/mcp@0.9.29"
+          "sh",
+          "-c",
+          "cd \"$HOME\" && exec npx -y @agentmemory/mcp@0.9.29"
         ],
         "environment": {
           "AGENTMEMORY_URL": "http://localhost:3111"
