@@ -1,0 +1,26 @@
+{
+  "$schema": "https://opencode.ai/v2/cli.json",
+  "theme": {
+    "name": "rosepine"
+  },
+  "keybinds": {
+    "leader": "ctrl+o",
+    "prompt.editor": "<leader>e",
+    "session.new": "<leader>c",
+    "session.tab.next": "<leader>n",
+    "session.tab.previous": "<leader>p",
+    "session.tab.reopen": "<leader>shift+c",
+    "session.compact": "none",
+    "input.submit": "return",
+    "input.newline": "alt+return,ctrl+j"
+  },
+  "diffs": {
+    "wrap": "word"
+  },
+  "session": {
+    "sidebar": "auto",
+    "scrollbar": true,
+    "thinking": "show"
+  },
+  "animations": true
+}

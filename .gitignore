@@ -1,11 +1,11 @@
 node_modules
-package.json
-package-lock.json
-bun.lock
 .aim
 .kiro
 
 /skill/vv-*
 /plugins/vv-*
+/commands/vv-*
 
 .DS_Store
+
+/service.json

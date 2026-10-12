@@ -1,17 +1,13 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "autoupdate": true,
+  "update": "auto",
   "instructions": [
     "AGENTS.md"
   ],
-  "server": {
-    "port": 4096
-  },
   // Don't share sessions with others automatically
   "share": "manual",
   "default_agent": "plan",
-  "lsp": true,
-  "agent": {
+  "agents": {
     // Some models don't need to be running OPUS al the time.
     // I could hard-code here, but i use the same config files on different machines
     // and some of those machines have access to work-provided AI providers.
@@ -26,23 +22,36 @@
       "model": "{env:OPENCODE_BIG_MODEL}"
     },
   },
-  "disabled_providers": [
-    "opencode"
-  ],
-  "provider": {
+  "experimental": {
+    "policies": [
+      {
+        "action": "provider.use",
+        "resource": "opencode",
+        "effect": "deny"
+      }
+    ]
+  },
+  "providers": {
     "lmstudio": {
-      "npm": "@ai-sdk/openai-compatible",
+      "package": "@opencode/ai/providers/openai-compatible",
       "name": "LM Studio (local)",
-      "options": {
+      "settings": {
         "baseURL": "http://127.0.0.1:1234/v1"
       },
       "models": {
         "qwen3.6-27b": {
           "name": "Qwen 3.6 27B (LM Studio)",
-          "tool_call": true,
-          "reasoning": true,
-          "interleaved": {
-            "field": "reasoning_content"
+          "capabilities": {
+            "tools": true,
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "compatibility": {
+            "reasoningField": "reasoning_content"
           },
           "limit": {
             "context": 120000,
@@ -51,10 +60,17 @@
         },
         "gemma-4-26b-a4b-it": {
           "name": "Gemma 4 26B A4B (LM Studio)",
-          "tool_call": true,
-          "reasoning": true,
-          "interleaved": {
-            "field": "reasoning_content"
+          "capabilities": {
+            "tools": true,
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "compatibility": {
+            "reasoningField": "reasoning_content"
           },
           "limit": {
             "context": 120000,
@@ -63,10 +79,17 @@
         },
         "gemma-4-e4b-it": {
           "name": "Gemma 4 E4B (LM Studio)",
-          "tool_call": true,
-          "reasoning": true,
-          "interleaved": {
-            "field": "reasoning_content"
+          "capabilities": {
+            "tools": true,
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "compatibility": {
+            "reasoningField": "reasoning_content"
           },
           "limit": {
             "context": 120000,
@@ -76,12 +99,12 @@
       }
     },
     "anthropic": {
-      "options": {
+      "settings": {
         "apiKey": "{env:ANTHROPIC_API_KEY}"
       }
     },
     "openai": {
-      "options": {
+      "settings": {
         // "apiKey": "{env:OPENAI_API_KEY}",
         "reasoningEffort": "medium",
         "reasoningSummary": "auto",
@@ -91,272 +114,279 @@
         ],
         "store": false
       }
-    },
-    "kiro": {
-      "npm": "kiro-acp-ai-provider",
-      "name": "Kiro",
-      "models": {
-        "claude-opus-5": {
-          "name": "Claude Opus 5 (Kiro)",
-          "attachment": true,
-          "reasoning": true,
-          "tool_call": true,
-          "temperature": true,
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "limit": {
-            "context": 1000000,
-            "output": 128000
-          }
-        },
-        "claude-sonnet-5": {
-          "name": "Claude Sonnet 5 (Kiro)",
-          "attachment": true,
-          "reasoning": true,
-          "tool_call": true,
-          "temperature": true,
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "limit": {
-            "context": 1000000,
-            "output": 64000
-          }
-        }
-      }
     }
   },
-  "permission": {
-    "*": "allow",
-    "notion_*": "ask",
-    "Sanity_*": "ask",
-    "chrome-devtools_*": "ask",
-    "context7_*": "ask",
-    "github_*": "ask",
-    "obsidian_*": "allow"
-  },
+  "permissions": [
+    {
+      "action": "*",
+      "resource": "*",
+      "effect": "allow"
+    },
+    {
+      "action": "notion_*",
+      "resource": "*",
+      "effect": "ask"
+    },
+    {
+      "action": "sanity_*",
+      "resource": "*",
+      "effect": "ask"
+    },
+    {
+      "action": "chrome_devtools_*",
+      "resource": "*",
+      "effect": "ask"
+    },
+    {
+      "action": "context7_*",
+      "resource": "*",
+      "effect": "ask"
+    },
+    {
+      "action": "github_*",
+      "resource": "*",
+      "effect": "ask"
+    },
+    {
+      "action": "obsidian_*",
+      "resource": "*",
+      "effect": "allow"
+    },
+    {
+      "action": "agentmemory_memory_file_history",
+      "resource": "*",
+      "effect": "deny"
+    },
+    {
+      "action": "agentmemory_memory_claude_*",
+      "resource": "*",
+      "effect": "deny"
+    }
+  ],
+  "plugins": [
+    "opencode-kiro@0.5.0-beta.7"
+  ],
   "mcp": {
-    "aws-knowledge-mcp-server": {
-      "type": "remote",
-      "url": "https://knowledge-mcp.global.api.aws",
-      "enabled": false
-    },
-    // https://github.com/paulburgess1357/nvim-mcp
-    "nvim-mcp": {
-      "type": "local",
-      "command": [
-        "uvx",
-        "nvim-mcp"
-      ],
-      "enabled": false
-    },
-    "calculator": {
-      "type": "local",
-      "command": [
-        "podman",
-        "run",
-        "-i",
-        "--rm",
-        "peva-calculator-mcp:latest"
-      ],
-      "enabled": false
-    },
-    "chrome-devtools": {
-      "type": "local",
-      "command": [
-        "npx",
-        "chrome-devtools-mcp@latest"
-      ],
-      "enabled": false
-    },
-    "confluence": {
-      "type": "local",
-      "command": [
-        "podman",
-        "run",
-        "--rm",
-        "-i",
-        "--network",
-        "host",
-        "--env",
-        "CONFLUENCE_DEFAULT_SPACE={env:CONFLUENCE_DEFAULT_SPACE}",
-        "--env",
-        "CONFLUENCE_BASE_URL={env:CONFLUENCE_BASE_URL}",
-        "--env",
-        "CONFLUENCE_TOKEN={env:CONFLUENCE_TOKEN}",
-        "--env",
-        "CONFLUENCE_ALLOW_MUTATIONS=true",
-        "peva-atlassian-mcp:latest"
-      ],
-      "enabled": false
-    },
-    "context7": {
-      "type": "remote",
-      "url": "https://mcp.context7.com/mcp",
-      "headers": {
-        "CONTEXT7_API_KEY": "{env:CONTEXT7_API_KEY}"
+    "servers": {
+      "aws-knowledge-mcp-server": {
+        "type": "remote",
+        "url": "https://knowledge-mcp.global.api.aws",
+        "disabled": true
+      },
+      // https://github.com/paulburgess1357/nvim-mcp
+      "nvim-mcp": {
+        "type": "local",
+        "command": [
+          "uvx",
+          "nvim-mcp"
+        ],
+        "disabled": true
+      },
+      "calculator": {
+        "type": "local",
+        "command": [
+          "podman",
+          "run",
+          "-i",
+          "--rm",
+          "peva-calculator-mcp:latest"
+        ],
+        "disabled": true
+      },
+      "chrome-devtools": {
+        "type": "local",
+        "command": [
+          "sh",
+          "-c",
+          "cd \"$HOME\" && exec \"$@\"",
+          "sh",
+          "npx",
+          "chrome-devtools-mcp@latest"
+        ],
+        "disabled": true
+      },
+      "confluence": {
+        "type": "local",
+        "command": [
+          "podman",
+          "run",
+          "--rm",
+          "-i",
+          "--network",
+          "host",
+          "--env",
+          "CONFLUENCE_DEFAULT_SPACE={env:CONFLUENCE_DEFAULT_SPACE}",
+          "--env",
+          "CONFLUENCE_BASE_URL={env:CONFLUENCE_BASE_URL}",
+          "--env",
+          "CONFLUENCE_TOKEN={env:CONFLUENCE_TOKEN}",
+          "--env",
+          "CONFLUENCE_ALLOW_MUTATIONS=true",
+          "peva-atlassian-mcp:latest"
+        ],
+        "disabled": true
+      },
+      "context7": {
+        "type": "remote",
+        "url": "https://mcp.context7.com/mcp",
+        "headers": {
+          "CONTEXT7_API_KEY": "{env:CONTEXT7_API_KEY}"
+        }
+      },
+      "exa": {
+        "type": "remote",
+        "url": "https://mcp.exa.ai/mcp?exaApiKey={env:EXA_API_KEY}",
+        "disabled": true
+      },
+      "fetch": {
+        "type": "local",
+        "command": [
+          "podman",
+          "run",
+          "--rm",
+          "-i",
+          "peva-fetch-mcp:latest"
+        ],
+        "disabled": true
+      },
+      "github": {
+        "type": "remote",
+        "url": "https://api.githubcopilot.com/mcp/",
+        "headers": {
+          "Authorization": "Bearer {env:GITHUB_PERSONAL_ACCESS_TOKEN}"
+        },
+        "disabled": true
+      },
+      // This plugin is extremely dangerous to use
+      // grep.app does not sort searces in any curated/popular/etc. way
+      // last time i checked searching for "svelte" only gave real svelte docs at result #11
+      // It will output ANY code snippets, including obvious LLM injection traps (result #4 when looking for svelte)
+      "gh_grep": {
+        "type": "remote",
+        "url": "https://mcp.grep.app",
+        "disabled": true
+      },
+      "jira": {
+        "type": "local",
+        "command": [
+          "podman",
+          "run",
+          "--rm",
+          "-i",
+          "--network",
+          "host",
+          "--env",
+          "JIRA_ALLOW_MUTATIONS=true",
+          "--env",
+          "JIRA_BASE_URL={env:JIRA_BASE_URL}",
+          "--env",
+          "JIRA_TOKEN={env:JIRA_TOKEN}",
+          "peva-jira-mcp:latest"
+        ],
+        "disabled": true
+      },
+      "memory": {
+        "type": "local",
+        "command": [
+          "sh",
+          "-c",
+          "cd \"$HOME\" && exec \"$@\"",
+          "sh",
+          "npx",
+          "-y",
+          "mcp-knowledge-graph",
+          "--memory-path",
+          "{env:AIM_GLOBAL_PATH}"
+        ],
+        "disabled": true
+      },
+      "notion": {
+        "type": "local",
+        "command": [
+          "podman",
+          "run",
+          "--rm",
+          "-i",
+          "--env",
+          "NOTION_TOKEN={env:NOTION_API_TOKEN}",
+          "peva-notion-mcp:latest"
+        ],
+        "disabled": true
+      },
+      "playwright": {
+        "type": "local",
+        "command": [
+          "sh",
+          "-c",
+          "cd \"$HOME\" && exec \"$@\"",
+          "sh",
+          "npx",
+          "@playwright/mcp@latest"
+        ],
+        "disabled": true
+      },
+      "sanity": {
+        "type": "remote",
+        "url": "https://mcp.sanity.io",
+        "headers": {
+          "Authorization": "Bearer {env:SANITY_MCP_TOKEN}"
+        },
+        "disabled": true
+      },
+      "sequentialthinking": {
+        "type": "local",
+        "command": [
+          "podman",
+          "run",
+          "--rm",
+          "-i",
+          "peva-sequentialthinking-mcp:latest"
+        ],
+        "disabled": true
+      },
+      "tavily": {
+        "type": "remote",
+        "url": "https://mcp.tavily.com/mcp/?tavilyApiKey={env:TAVILY_API_KEY}",
+        "disabled": true
+      },
+      "obsidian": {
+        "type": "local",
+        "command": [
+          "podman",
+          "run",
+          "--rm",
+          "-i",
+          "--network",
+          "host",
+          "--env",
+          "OBSIDIAN_API_KEY={env:OBSIDIAN_API_KEY}",
+          "peva-obsidian-mcp:latest"
+        ],
+        "disabled": true
+      },
+      "time": {
+        "type": "local",
+        "command": [
+          "podman",
+          "run",
+          "--rm",
+          "-i",
+          "peva-time-mcp:latest"
+        ],
+        "disabled": true
+      },
+      "agentmemory": {
+        "type": "local",
+        "command": [
+          "sh",
+          "-c",
+          "cd \"$HOME\" && exec npx -y @agentmemory/mcp@0.9.29"
+        ],
+        "environment": {
+          "AGENTMEMORY_URL": "http://localhost:3111"
+        },
+        "disabled": false
       }
-    },
-    "exa": {
-      "type": "remote",
-      "url": "https://mcp.exa.ai/mcp?exaApiKey={env:EXA_API_KEY}",
-      "enabled": false
-    },
-    "fetch": {
-      "type": "local",
-      "command": [
-        "podman",
-        "run",
-        "--rm",
-        "-i",
-        "peva-fetch-mcp:latest"
-      ],
-      "enabled": false
-    },
-    "github": {
-      "type": "remote",
-      "url": "https://api.githubcopilot.com/mcp/",
-      "headers": {
-        "Authorization": "Bearer {env:GITHUB_PERSONAL_ACCESS_TOKEN}"
-      },
-      "enabled": false
-    },
-    // This plugin is extremely dangerous to use
-    // grep.app does not sort searces in any curated/popular/etc. way
-    // last time i checked searching for "svelte" only gave real svelte docs at result #11
-    // It will output ANY code snippets, including obvious LLM injection traps (result #4 when looking for svelte)
-    "gh_grep": {
-      "type": "remote",
-      "url": "https://mcp.grep.app",
-      "enabled": false
-    },
-    "jira": {
-      "type": "local",
-      "command": [
-        "podman",
-        "run",
-        "--rm",
-        "-i",
-        "--network",
-        "host",
-        "--env",
-        "JIRA_ALLOW_MUTATIONS=true",
-        "--env",
-        "JIRA_BASE_URL={env:JIRA_BASE_URL}",
-        "--env",
-        "JIRA_TOKEN={env:JIRA_TOKEN}",
-        "peva-jira-mcp:latest"
-      ],
-      "enabled": false
-    },
-    "memory": {
-      "type": "local",
-      "command": [
-        "npx",
-        "-y",
-        "mcp-knowledge-graph",
-        "--memory-path",
-        "{env:AIM_GLOBAL_PATH}"
-      ],
-      "enabled": false
-    },
-    "notion": {
-      "type": "local",
-      "command": [
-        "podman",
-        "run",
-        "--rm",
-        "-i",
-        "--env",
-        "NOTION_TOKEN={env:NOTION_API_TOKEN}",
-        "peva-notion-mcp:latest"
-      ],
-      "enabled": false
-    },
-    "playwright": {
-      "type": "local",
-      "command": [
-        "npx",
-        "@playwright/mcp@latest"
-      ],
-      "enabled": false
-    },
-    "sanity": {
-      "type": "remote",
-      "url": "https://mcp.sanity.io",
-      "headers": {
-        "Authorization": "Bearer {env:SANITY_MCP_TOKEN}"
-      },
-      "enabled": false
-    },
-    "sequentialthinking": {
-      "type": "local",
-      "command": [
-        "podman",
-        "run",
-        "--rm",
-        "-i",
-        "peva-sequentialthinking-mcp:latest"
-      ]
-    },
-    "tavily": {
-      "type": "remote",
-      "url": "https://mcp.tavily.com/mcp/?tavilyApiKey={env:TAVILY_API_KEY}",
-      "enabled": false
-    },
-    "obsidian": {
-      "type": "local",
-      "command": [
-        "podman",
-        "run",
-        "--rm",
-        "-i",
-        "--network",
-        "host",
-        "--env",
-        "OBSIDIAN_API_KEY={env:OBSIDIAN_API_KEY}",
-        "peva-obsidian-mcp:latest"
-      ],
-      "enabled": false
-    },
-    "time": {
-      "type": "local",
-      "command": [
-        "podman",
-        "run",
-        "--rm",
-        "-i",
-        "peva-time-mcp:latest"
-      ],
-      "enabled": true
-    },
-    "agentmemory": {
-      "type": "local",
-      "command": [
-        "npx",
-        "-y",
-        "@agentmemory/mcp@0.9.29"
-      ],
-      "environment": {
-        "AGENTMEMORY_URL": "http://localhost:3111"
-      },
-      "enabled": true
     }
-  },
-  "plugin": [
-    "./plugins/agentmemory-capture.ts",
-  ]
+  }
 }
