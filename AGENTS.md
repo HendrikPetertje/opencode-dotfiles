@@ -7,6 +7,7 @@
 
 - Do not inspect images, screenshots, or other binary/non-text assets directly in the primary agent session. Delegate that inspection to a subagent.
 - `lightweight-explorer` is the preferred subagent for this work. Ask it for a concise text-only description, transcription, or summary of the relevant content.
+- Whenever starting the `lightweight-explorer` subagent, read the provider/model from the `OPENCODE_MINI_MODEL` environment variable and pass it explicitly as the subagent invocation's `model`. Do not rely on the agent's configured default model.
 - Do not forward image or binary payloads to the primary agent; use only the subagent's textual findings.
 
 # Controlled Chromium and Playwright
