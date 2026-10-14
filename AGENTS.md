@@ -5,11 +5,13 @@
 
 # Lightweight Explorer
 The lightweight-explorer can be used to perform certain tasks outlined below.
-when calling it make sure to start the sub agent with the provider and model
-configured in the OPENCODE_MINI_MODEL ENV variable. Based on the task decide if
-there is value in allowing the sub-agent to fetch memories. If a sub agent runs
-a set of pre-determined commands and summarizes their output, then there is no reason to
-allow that sub-agent to fetch 10k tokens worth of memories.
+Whenever starting the `lightweight-explorer` subagent, read the provider/model
+from the `OPENCODE_MINI_MODEL` environment variable and pass it explicitly as
+the subagent invocation's `model`. Do not rely on the agent's configured default
+model. Based on the task decide if there is value in allowing the sub-agent to
+fetch memories. If a sub agent runs a set of pre-determined commands and
+summarizes their output, then there is no reason to allow that sub-agent to
+fetch 10k tokens worth of memories.
 
 # Images and Binary Data
 
