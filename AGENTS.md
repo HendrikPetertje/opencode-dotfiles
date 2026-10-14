@@ -3,6 +3,14 @@
 1. **Never run the `find` bash command, in any form, for any reason** (e.g. `find . -name`, `find -maxdepth`, piped into `find`, etc.). This includes as a fallback in `||`/`&&` chains. Use `rg --files -g '<pattern>'`, `ag -g '<pattern>'`, or the Glob tool instead. If you catch yourself about to type `find`, stop and substitute one of those instead.
 2. Never commit. GPG signing is enforced on this user's commits and AI agents cannot sign commits, so agents must never run `git commit` themselves — the user handles all commits. When asked, only draft a commit message for the user to copy-paste (see GIT section below).
 
+# Lightweight Explorer
+The lightweight-explorer can be used to perform certain tasks outlined below.
+when calling it make sure to start the sub agent with the provider and model
+configured in the OPENCODE_MINI_MODEL ENV variable. Based on the task decide if
+there is value in allowing the sub-agent to fetch memories. If a sub agent runs
+a set of pre-determined commands and summarizes their output, then there is no reason to
+allow that sub-agent to fetch 10k tokens worth of memories.
+
 # Images and Binary Data
 
 - Do not inspect images, screenshots, or other binary/non-text assets directly in the primary agent session. Delegate that inspection to a subagent.
