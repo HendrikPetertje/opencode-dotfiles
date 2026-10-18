@@ -44,18 +44,17 @@ You do not get to decide that the lookup is unnecessary. Judging a message as un
 At the beginning of every session, before diving into the user's request:
 
 1. Lead with `memory_smart_search` to scan along both axes (user preferences/workflow, and project context at the current session's full absolute path). It returns titles + observation IDs only (~150 tokens), so use it to see what is relevant before pulling any detail.
-2. Pull detail with `memory_recall` using `format: "narrative"` and a `token_budget` (~600 per call). Run it along the same two axes:
+2. Pull detail with `memory_recall` using `format: "narrative"` and a `token_budget` (~300 or if you need more info ~600 per call). Run it along the same two axes:
    - A user-wide recall for preferences and workflow rules using terms like `code style`, `tool preferences`, `build rules`, `testing patterns`, and keywords from the user's first message.
    - A project-context recall using the current session project's full absolute path plus stack, convention, architecture, bug, and file/module keywords that match the user's first message.
 3. Only request `format: "full"` for a specific hit when narrative is insufficient (e.g. you need the exact files, facts, or concepts). Never default to full-format bulk recall.
 4. Apply useful recalled context silently by default. Only mention remembered context when the user asks, when it is necessary to resolve ambiguity, or when surfacing it prevents a likely mistake.
-5. If the project is new or unfamiliar, ask the user about their preferences, conventions, and context -- then save those with `memory_save`.
+5. If the project is new or unfamiliar, ask the user about their preferences, conventions, and context -- then save those with `memory_save` preferably under the scope of that project.
 
 ## During work
 
-- **Before editing a file**: check `memory_file_history` to see if there are known pitfalls or past decisions about that file.
 - **Before making architectural decisions**: use `memory_lesson_recall` to check if past lessons apply.
-- **After discovering something important**: save it with `memory_save` (bugs, patterns, preferences, architecture decisions).
+- **After discovering something important**: save it with `memory_save` (patterns, preferences, architecture decisions).
 - **After learning a user preference**: save it as type `preference` (code style, tool choices, communication style, naming conventions).
 
 ## Project scoping
@@ -78,18 +77,9 @@ Save these without being asked:
 - Patterns that worked well or failed -- save as project-specific
 - File relationships and module boundaries -- save as project-specific
 
-## What to proactively recall
-
-Search memory when:
-
-- The user mentions a topic you might have discussed before
-- You're about to make a choice that could conflict with past decisions
-- The user seems to be repeating context they've given before (save them the effort)
-- Starting work on a file or module that may have history
-
 ## Asking the user
 
-If memory is sparse for the current project, proactively ask:
+If memory or context is sparse for the current project, proactively ask:
 
 - "Do you have any conventions or preferences I should know about for this project?"
 - "Is there anything from past work on this codebase I should keep in mind?"
