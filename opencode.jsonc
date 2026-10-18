@@ -39,8 +39,8 @@
         "baseURL": "http://127.0.0.1:1234/v1"
       },
       "models": {
-        "qwen3.6-27b": {
-          "name": "Qwen 3.6 27B (LM Studio)",
+        "qwen/qwen3.8-27b": {
+          "name": "Qwen 3.8 27B (LM Studio)",
           "capabilities": {
             "tools": true,
             "input": [
@@ -58,44 +58,6 @@
             "output": 8192
           }
         },
-        "gemma-4-26b-a4b-it": {
-          "name": "Gemma 4 26B A4B (LM Studio)",
-          "capabilities": {
-            "tools": true,
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "compatibility": {
-            "reasoningField": "reasoning_content"
-          },
-          "limit": {
-            "context": 120000,
-            "output": 8192
-          }
-        },
-        "gemma-4-e4b-it": {
-          "name": "Gemma 4 E4B (LM Studio)",
-          "capabilities": {
-            "tools": true,
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "compatibility": {
-            "reasoningField": "reasoning_content"
-          },
-          "limit": {
-            "context": 120000,
-            "output": 8192
-          }
-        }
       }
     },
     "anthropic": {
@@ -161,10 +123,16 @@
       "action": "agentmemory_memory_claude_*",
       "resource": "*",
       "effect": "deny"
+    },
+    {
+      "action": "supermemory_recall",
+      "resource": "*",
+      "effect": "allow"
     }
   ],
   "plugins": [
-    "opencode-kiro@0.5.0-beta.7"
+    "opencode-kiro@0.5.0-beta.7",
+    "opencode-supermemory"
   ],
   "mcp": {
     "servers": {
@@ -385,7 +353,7 @@
         "environment": {
           "AGENTMEMORY_URL": "http://localhost:3111"
         },
-        "disabled": false
+        "disabled": true
       }
     }
   }
