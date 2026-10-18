@@ -72,10 +72,11 @@ Save these without being asked:
 
 - User preferences (formatting, naming, frameworks, tools they like/dislike) -- save as user-wide
 - Project conventions discovered during work -- save as project-specific
-- Bugs found and their root causes -- save as project-specific
 - Architectural decisions and their rationale -- save as project-specific
 - Patterns that worked well or failed -- save as project-specific
-- File relationships and module boundaries -- save as project-specific
+
+Project conventions, architectural patterns and the like that are stored in the
+AGENTS.md file or project specific skills should not be saved as memories.
 
 ## Asking the user
 
