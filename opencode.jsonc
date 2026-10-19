@@ -114,15 +114,63 @@
       "resource": "*",
       "effect": "allow"
     },
+    // agentmemory: deny everything, then allow the everyday set (last match wins).
+    // Housekeeping tools are re-allowed only for the memory-review agent.
+    // Denied tools are also removed from the Code Mode catalog, so they cost no context.
     {
-      "action": "agentmemory_memory_file_history",
+      "action": "agentmemory_memory_*",
       "resource": "*",
       "effect": "deny"
     },
     {
-      "action": "agentmemory_memory_claude_*",
+      "action": "agentmemory_memory_save",
       "resource": "*",
-      "effect": "deny"
+      "effect": "allow"
+    },
+    {
+      "action": "agentmemory_memory_recall",
+      "resource": "*",
+      "effect": "allow"
+    },
+    {
+      "action": "agentmemory_memory_smart_search",
+      "resource": "*",
+      "effect": "allow"
+    },
+    {
+      "action": "agentmemory_memory_sessions",
+      "resource": "*",
+      "effect": "allow"
+    },
+    {
+      "action": "agentmemory_memory_lesson_save",
+      "resource": "*",
+      "effect": "allow"
+    },
+    {
+      "action": "agentmemory_memory_lesson_recall",
+      "resource": "*",
+      "effect": "allow"
+    },
+    {
+      "action": "agentmemory_memory_slot_list",
+      "resource": "*",
+      "effect": "allow"
+    },
+    {
+      "action": "agentmemory_memory_slot_get",
+      "resource": "*",
+      "effect": "allow"
+    },
+    {
+      "action": "agentmemory_memory_slot_append",
+      "resource": "*",
+      "effect": "allow"
+    },
+    {
+      "action": "agentmemory_memory_slot_replace",
+      "resource": "*",
+      "effect": "allow"
     }
     // {
     //   "action": "supermemory_recall",
