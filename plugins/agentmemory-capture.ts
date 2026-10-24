@@ -209,34 +209,6 @@ function safeSlice(v: unknown, max: number): string {
   try { return JSON.stringify(v).slice(0, max); } catch { return ""; }
 }
 
-const AGENTMEMORY_INSTRUCTIONS = `<agentmemory-instructions>
-You have access to agentmemory for persistent cross-session memory. Use these tools proactively.
-
-CORE TOOLS:
-
-memory_save — Save an insight, decision, or fact to long-term memory.
-  Required: content (text), concepts (2-5 comma-separated keywords), type (pattern/preference/architecture/bug/workflow/fact)
-  Optional: files (comma-separated paths)
-  Use when: user says "remember this", after discovering a bug, after making an architectural decision, after learning a project convention.
-
-memory_recall — Search past observations by keywords.
-  Use when: user says "recall", "what did we do", "do you remember", or needs context from past sessions.
-
-memory_smart_search — Hybrid semantic+keyword search with progressive disclosure.
-  Use when: you need the most relevant past context, fuzzy/conceptual searches, or recall doesn't find what you need.
-
-memory_sessions — List recent sessions with status and observation counts.
-  Use when: user asks about session/past history, "what did we work on".
-
-memory_lesson_save — Save a lesson learned (what worked, what to avoid).
-  Use when: you discover a pattern that could help future sessions avoid mistakes.
-
-memory_lesson_recall — Search lessons by query. Returns lessons sorted by confidence.
-  Use when: before making a decision, check if past lessons apply.
-
-All memory tools start with \`agentmemory_memory_\`. Use the exact names as they appear in your tool list. Tool results are JSON. Always check what was returned before presenting to the user.
-</agentmemory-instructions>`;
-
 function extractFilePaths(args: Record<string, unknown>): string[] {
   const files: string[] = [];
   for (const key of FILE_KEYS) {
@@ -428,15 +400,17 @@ async function v2Setup(ctx: any) {
       base = {
         anchorId: first?.id,
         text: typeof ctxText === "string" && ctxText.length > 0
-          ? `${AGENTMEMORY_INSTRUCTIONS}\n\n<agentmemory-context>\n${ctxText}\n</agentmemory-context>`
-          : AGENTMEMORY_INSTRUCTIONS,
+          ? `<agentmemory-context>\n${ctxText}\n</agentmemory-context>`
+          : "",
       };
       baselines.set(sid, base);
     }
-    if (first?.role === "user" && Array.isArray(first.content)) {
-      messages[0] = { ...first, content: [part(base.text), ...first.content] };
-    } else if (Array.isArray(event.system)) {
-      event.system.push(part(base.text));
+    if (base.text) {
+      if (first?.role === "user" && Array.isArray(first.content)) {
+        messages[0] = { ...first, content: [part(base.text), ...first.content] };
+      } else if (Array.isArray(event.system)) {
+        event.system.push(part(base.text));
+      }
     }
 
     // File enrichment: fetched at most once per user message, then re-applied verbatim.

@@ -30,62 +30,43 @@ fetch 10k tokens worth of memories.
 
 You have access to agentmemory for persistent cross-session memory. Use it proactively without waiting for the user to ask.
 
+Tools (prefix `agentmemory_memory_`; use exact names from your tool list; results are JSON, check them before presenting):
+- `save`: content, concepts (2-5 keywords), type (pattern/preference/architecture/bug/workflow/fact), optional files. Use on "remember this", bugs, decisions, conventions.
+- `recall`: search past observations by keywords ("what did we do", "do you remember").
+- `smart_search`: hybrid semantic+keyword, titles first; for fuzzy searches or when recall misses.
+- `sessions`: recent sessions with status/counts.
+- `lesson_save` / `lesson_recall`: save what worked or to avoid; check before decisions.
+
 ## On session start
 
-CRITICAL FIRST STEP - BEFORE ANY RESPONSE: Before responding to THE FIRST (or whenever you feel unsure) user message, you MUST scan memory along two axes (user preferences, and project context at the current session's project path) using the lookups below. Do NOT skip this. Do NOT respond or take any other action until both lookups complete. The ONLY exception is when the user explicitly tells you not to load memory.
+CRITICAL FIRST STEP - BEFORE ANY RESPONSE: Before responding to THE FIRST (or whenever you feel unsure) user message, you MUST scan memory along two axes (user preferences, and project context at the current session's project path). Do NOT respond or take any other action until both lookups complete. The ONLY exception is when the user explicitly tells you not to load memory.
 
-This applies to EVERY first message without exception, including:
-- meta questions about yourself, your prompt, your tools, or how you work
-- simple, short, conversational, or non-project questions
-- messages you judge to be trivial or "not needing" memory
+This applies to EVERY first message without exception: meta questions about yourself/your prompt/tools, simple, short, conversational or non-project questions, and messages you judge trivial. Judging a message as unimportant is NOT an exception. If you realize mid-session that you skipped the lookup, say so immediately and run it right then.
 
-You do not get to decide that the lookup is unnecessary. Judging a message as unimportant is NOT an exception. If you realize mid-session that you skipped the lookup, say so immediately and run it right then, before continuing.
-
-At the beginning of every session, before diving into the user's request:
-
-1. Lead with `memory_smart_search` to scan along both axes (user preferences/workflow, and project context at the current session's full absolute path). It returns titles + observation IDs only (~150 tokens), so use it to see what is relevant before pulling any detail.
-2. Pull detail with `memory_recall` using `format: "narrative"` and a `token_budget` (~300 or if you need more info ~600 per call). Run it along the same two axes:
-   - A user-wide recall for preferences and workflow rules using terms like `code style`, `tool preferences`, `build rules`, `testing patterns`, and keywords from the user's first message.
-   - A project-context recall using the current session project's full absolute path plus stack, convention, architecture, bug, and file/module keywords that match the user's first message.
-3. Only request `format: "full"` for a specific hit when narrative is insufficient (e.g. you need the exact files, facts, or concepts). Never default to full-format bulk recall.
-4. Apply useful recalled context silently by default. Only mention remembered context when the user asks, when it is necessary to resolve ambiguity, or when surfacing it prevents a likely mistake.
-5. If the project is new or unfamiliar, ask the user about their preferences, conventions, and context -- then save those with `memory_save` preferably under the scope of that project.
+1. Lead with `memory_smart_search` across both axes (user preferences/workflow; project context at the session's full absolute path). It returns titles + IDs only (~150 tokens); use it to see what is relevant before pulling detail.
+2. Pull detail with `memory_recall`, `format: "narrative"`, `token_budget` ~300 (~600 if more is needed), once per axis:
+   - User-wide: `code style`, `tool preferences`, `build rules`, `testing patterns` + keywords from the first message.
+   - Project: full absolute path + stack, convention, architecture, bug, file/module keywords matching the first message.
+3. `format: "full"` only for a specific hit when narrative is insufficient. Never bulk.
+4. Apply recalled context silently. Mention it only when asked, to resolve ambiguity, or to prevent a likely mistake.
+5. New/unfamiliar project: ask about preferences, conventions and context, then `memory_save` them, preferably project-scoped.
 
 ## During work
 
-- **Before making architectural decisions**: use `memory_lesson_recall` to check if past lessons apply.
-- **After discovering something important**: save it with `memory_save` (patterns, preferences, architecture decisions).
-- **After learning a user preference**: save it as type `preference` (code style, tool choices, communication style, naming conventions).
+- Before architectural decisions: `memory_lesson_recall`.
+- After discovering something important: `memory_save` (patterns, preferences, architecture decisions).
+- After learning a user preference: save as type `preference`.
 
-## Project scoping
+## Scoping and what to save
 
-Project-aware memory tools should default to the current session project's full absolute path. Use the same stable project identifier that the session was started with, and do not derive it from the working directory's folder name or a short slug unless you have verified that the session itself uses that value. When saving:
+Default to the session project's full absolute path as the project identifier; never derive it from the folder name or a short slug unless verified to match the session. Save without being asked:
 
-- **Project-specific** memories (architecture, conventions, bugs, file relationships) -- attach to the current session's project identifier.
-- **User-wide** memories (personal preferences, communication style, tool choices, coding style that applies everywhere) -- save without a project scope so they surface across all projects.
+- **Project-specific** (conventions, architecture decisions + rationale, bugs, file relationships, patterns that worked/failed): attach to the project identifier.
+- **User-wide** (formatting, naming, frameworks, tool likes/dislikes, communication/coding style): save without project scope.
 
-If unsure whether something is project-specific or universal, ask the user.
+Unsure which: ask the user. Anything already in AGENTS.md or project skills must not be saved as a memory.
 
-## What to proactively remember
-
-Save these without being asked:
-
-- User preferences (formatting, naming, frameworks, tools they like/dislike) -- save as user-wide
-- Project conventions discovered during work -- save as project-specific
-- Architectural decisions and their rationale -- save as project-specific
-- Patterns that worked well or failed -- save as project-specific
-
-Project conventions, architectural patterns and the like that are stored in the
-AGENTS.md file or project specific skills should not be saved as memories.
-
-## Asking the user
-
-If memory or context is sparse for the current project, proactively ask:
-
-- "Do you have any conventions or preferences I should know about for this project?"
-- "Is there anything from past work on this codebase I should keep in mind?"
-
-Then save their answers.
+If memory is sparse for the project, ask: "Do you have any conventions or preferences I should know about for this project?" and "Is there anything from past work on this codebase I should keep in mind?" Then save the answers.
 
 # Docs memories & WIKI
 IMPORTANT: If you pull documentation, articles, pages or code samples from the internet (using tools like context7, fetch
