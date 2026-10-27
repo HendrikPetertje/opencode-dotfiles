@@ -160,11 +160,10 @@ To enable a disabled server, set `"enabled": true` in `opencode.jsonc`.
 
 ## Memory system
 
-The Peva build and plan agents use AIM (AI Memory) — a persistent knowledge graph backed by the `memory` MCP server. Three storage scopes:
+Agents use AIM (AI Memory), a persistent knowledge graph backed by the `memory` MCP server (`mcp-knowledge-graph`). Instructions live in `AGENTS.md`.
 
-- **Global** — personal context that persists across all projects
-- **Project-local** — per-repo observations stored in `.aim/` (gitignored)
-- **Work-log** — dated action history in a separate `work-log` context
+- **Global** and **project** scopes are both always read and written explicitly by the agent
+- Where each scope is stored is decided by the `--memory-path` argument of the `memory` server in `opencode.jsonc` (`~/.config/.aim/`), not by the agent
 
 ---
 

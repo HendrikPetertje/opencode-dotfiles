@@ -113,70 +113,7 @@
       "action": "obsidian_*",
       "resource": "*",
       "effect": "allow"
-    },
-    // agentmemory: deny everything, then allow the everyday set (last match wins).
-    // Housekeeping tools are re-allowed only for the memory-review agent.
-    // Denied tools are also removed from the Code Mode catalog, so they cost no context.
-    {
-      "action": "agentmemory_memory_*",
-      "resource": "*",
-      "effect": "deny"
-    },
-    {
-      "action": "agentmemory_memory_save",
-      "resource": "*",
-      "effect": "allow"
-    },
-    {
-      "action": "agentmemory_memory_recall",
-      "resource": "*",
-      "effect": "allow"
-    },
-    {
-      "action": "agentmemory_memory_smart_search",
-      "resource": "*",
-      "effect": "allow"
-    },
-    {
-      "action": "agentmemory_memory_sessions",
-      "resource": "*",
-      "effect": "allow"
-    },
-    {
-      "action": "agentmemory_memory_lesson_save",
-      "resource": "*",
-      "effect": "allow"
-    },
-    {
-      "action": "agentmemory_memory_lesson_recall",
-      "resource": "*",
-      "effect": "allow"
-    },
-    {
-      "action": "agentmemory_memory_slot_list",
-      "resource": "*",
-      "effect": "allow"
-    },
-    {
-      "action": "agentmemory_memory_slot_get",
-      "resource": "*",
-      "effect": "allow"
-    },
-    {
-      "action": "agentmemory_memory_slot_append",
-      "resource": "*",
-      "effect": "allow"
-    },
-    {
-      "action": "agentmemory_memory_slot_replace",
-      "resource": "*",
-      "effect": "allow"
     }
-    // {
-    //   "action": "supermemory_recall",
-    //   "resource": "*",
-    //   "effect": "allow"
-    // }
   ],
   "plugins": [
     "opencode-kiro@0.5.0-beta.7",
@@ -304,17 +241,12 @@
       "memory": {
         "type": "local",
         "command": [
-          "sh",
-          "-c",
-          "cd \"$HOME\" && exec \"$@\"",
-          "sh",
           "npx",
           "-y",
           "mcp-knowledge-graph",
           "--memory-path",
-          "{env:AIM_GLOBAL_PATH}"
-        ],
-        "disabled": true
+          "{env:HOME}/.config/.aim"
+        ]
       },
       "notion": {
         "type": "local",
@@ -390,18 +322,6 @@
           "peva-time-mcp:latest"
         ],
         "disabled": true
-      },
-      "agentmemory": {
-        "type": "local",
-        "command": [
-          "sh",
-          "-c",
-          "cd \"$HOME\" && exec npx -y @agentmemory/mcp@0.9.30"
-        ],
-        "environment": {
-          "AGENTMEMORY_URL": "http://localhost:3111"
-        },
-        "disabled": false
       }
     }
   }
