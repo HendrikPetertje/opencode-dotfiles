@@ -48,14 +48,14 @@ Calling without these parameters causes incorrect behavior.
 ## What to store
 Be attentive to new information about:
 - identity, behaviors, preferences, goals and relationships of the user: observations on the `peter` entity in `location: "global"`
-- project conventions, patterns, architecture decisions and gotchas: observations on the PascalCase project entity in `location: "project"`
+- project conventions, patterns, architecture decisions and gotchas: observations on the project entity (see the project name rule below) in `location: "project"`
 - recurring people, organizations, tools, languages and significant events: entities with relations (e.g. `peter` develops `ProjectName`, in the appropriate scope)
 
 Preferences can be general (global) or project-specific (project); pick the scope by context.
 
 Rules:
 - Before creating an entity in a scope, search that scope; if it exists, add observations instead of recreating it.
-- Project names are PascalCase (`my-project` → `MyProject`).
+- The project name is the name of the current working directory, used as is. If that directory is `main` or looks like a worktree for a branch (`bugfix*`, `boyscout*`, or a JIRA key like `ABC-1234*`), use the name of the folder one level up (the worktree root) instead.
 - Make observations specific and short.
 - Do not mirror observations across scopes unless the user asks.
 - No work logs or action history.
