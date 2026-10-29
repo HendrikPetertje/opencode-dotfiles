@@ -37,6 +37,7 @@ CRITICAL FIRST STEP - BEFORE ANY RESPONSE: at the start of every chat, call `aim
 - Project: `aim_memory_read_all({ location: "project", context: "current" })`
 
 Refer to the combined result as your "memory". Do not rely on auto-detected scope.
+If the project read fails with "No project detected", it just means there are no project memories yet; treat it as empty and continue.
 
 ## Tool calls
 ALWAYS include BOTH `location` and `context` on every memory tool call:
