@@ -99,7 +99,10 @@ that match — never bulk-read the wiki "just in case".
   output a commit message the user can copy-paste
 
 # Tooling
-- The user has ripgrep, grep and ag (silver searcher) installed. find is often
+- These CLI tools are installed; use them without probing for availability:
+  `rg`, `ag`, `grep`, `fd`, `jq`, `yq`, `xq`, `mlr`, `duckdb`, `ast-grep`,
+  `tokei`.
+- find is often
   an extremely slow way to find things on the disk, especially in nodejs
   projects with many dependencies. DO NOT EVER USE THE "find" BASH COMMAND ON THE
   LOCAL MACHINE, in any form (including `-maxdepth`, `-name`, or as a fallback

@@ -8,6 +8,30 @@ Personal [OpenCode](https://opencode.ai) configuration, version-controlled for p
 - [Podman](https://podman.io/) (containerized MCP servers use Podman, not Docker)
 - A secrets manager (e.g. [1Password](https://1password.com/)) that mounts env files with conditional access
 
+### CLI tools (Homebrew)
+
+Agents rely on these command line tools (see `AGENTS.md`). Install them all on a new machine with:
+
+```bash
+brew install ripgrep the_silver_searcher fd jq yq xq miller duckdb ast-grep tokei fx
+```
+
+| Formula | Binary | Purpose |
+|---------|--------|---------|
+| `ripgrep` | `rg` | Fast content search |
+| `the_silver_searcher` | `ag` | Content search |
+| `fd` | `fd` | File finder (use instead of `find`) |
+| `jq` | `jq` | JSON processing |
+| `yq` | `yq` | YAML/TOML/XML processing |
+| `xq` | `xq` | XML/HTML queries (conflicts with `python-yq`) |
+| `miller` | `mlr` | CSV/TSV/JSON records |
+| `duckdb` | `duckdb` | SQL over CSV/JSON/Parquet |
+| `ast-grep` | `ast-grep` | Structural code search and rewrite |
+| `tokei` | `tokei` | Code size and language stats |
+| `fx` | `fx` | Interactive JSON viewer (for humans) |
+
+Verify with `command -v rg ag fd jq yq xq mlr duckdb ast-grep tokei fx`.
+
 ## Installation
 
 Copy the lines below to your .zshrc / .bashrc / etc.
