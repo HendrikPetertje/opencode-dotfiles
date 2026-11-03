@@ -13,7 +13,7 @@ Personal [OpenCode](https://opencode.ai) configuration, version-controlled for p
 Agents rely on these command line tools (see `AGENTS.md`). Install them all on a new machine with:
 
 ```bash
-brew install ripgrep the_silver_searcher fd jq yq xq miller duckdb ast-grep tokei fx
+brew install ripgrep the_silver_searcher fd jq yq xq miller duckdb ast-grep tokei
 ```
 
 | Formula | Binary | Purpose |
@@ -28,9 +28,8 @@ brew install ripgrep the_silver_searcher fd jq yq xq miller duckdb ast-grep toke
 | `duckdb` | `duckdb` | SQL over CSV/JSON/Parquet |
 | `ast-grep` | `ast-grep` | Structural code search and rewrite |
 | `tokei` | `tokei` | Code size and language stats |
-| `fx` | `fx` | Interactive JSON viewer (for humans) |
 
-Verify with `command -v rg ag fd jq yq xq mlr duckdb ast-grep tokei fx`.
+Verify with `command -v rg ag fd jq yq xq mlr duckdb ast-grep tokei`.
 
 ## Installation
 
