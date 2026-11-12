@@ -151,7 +151,7 @@
         "command": [
           "sh",
           "-c",
-          "cd \"$HOME\" && exec \"$@\"",
+          "cd \"$HOME\" && if [ -n \"$CHROME_PATH\" ]; then exec \"$@\" --executablePath \"$CHROME_PATH\" --headless --isolated --chromeArg=--no-sandbox; else exec \"$@\"; fi",
           "sh",
           "npx",
           "chrome-devtools-mcp@latest"

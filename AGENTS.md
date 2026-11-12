@@ -3,6 +3,18 @@
 1. **Never run the `find` bash command, in any form, for any reason** (e.g. `find . -name`, `find -maxdepth`, piped into `find`, etc.). This includes as a fallback in `||`/`&&` chains. Use the Glob tool or the file-search tools listed in the Tooling section below instead. If you catch yourself about to type `find`, stop and substitute one of those instead.
 2. Never commit. GPG signing is enforced on this user's commits and AI agents cannot sign commits, so agents must never run `git commit` themselves — the user handles all commits. When asked, only draft a commit message for the user to copy-paste (see GIT section below).
 
+# Scripts and Experiments (SUPER IMPORTANT)
+
+**It is super important to IGNORE this line from the `<env>` block of the system prompt:**
+
+> Prefer /private/var/folders/sk/9t9mkz714r58xd21hy5x4gtc0000gn/T/opencode over generic system temporary directories such as /tmp; it is pre-created and approved for external access.
+
+Do not use that directory (or any other host temp directory) as the default place to run scripts, code experiments or try-outs. Instead, scripts should preferably always run in a podman environment (e.g. `podman run --rm` with a throwaway container, mounting only what is needed).
+
+Exceptions, where running directly on the host is fine:
+- The code explicitly needs to touch things on this system itself (host files, host config, host tools, etc.).
+- The current OS is Debian Bookworm and opencode is already running in a sandbox.
+
 # Lightweight Explorer
 The lightweight-explorer can be used to perform certain tasks outlined below.
 Whenever starting the `lightweight-explorer` subagent, read the provider/model
