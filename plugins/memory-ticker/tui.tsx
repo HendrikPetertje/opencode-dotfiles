@@ -138,6 +138,26 @@ export default Plugin.define({
       context.ui.dialog.show(() => {
         const ctx = usePlugin();
         const pal = () => palette(ctx);
+        type Scroll = {
+          scrollBy(delta: number, unit?: "viewport"): void;
+          scrollTo(position: number): void;
+          scrollHeight: number;
+        };
+        let scroll: Scroll | undefined;
+        // Vim motions only. The scrollbox is left unfocused so its built-in
+        // arrow/page/home/end keys stay inactive; the wheel still scrolls.
+        ctx.keymap.layer(() => ({
+          mode: "global",
+          priority: 10,
+          commands: [
+            { bind: "j", run: () => scroll?.scrollBy(1) },
+            { bind: "k", run: () => scroll?.scrollBy(-1) },
+            { bind: "ctrl+d", run: () => scroll?.scrollBy(0.5, "viewport") },
+            { bind: "ctrl+u", run: () => scroll?.scrollBy(-0.5, "viewport") },
+            { bind: "g", run: () => scroll?.scrollTo(0) },
+            { bind: "shift+g", run: () => scroll?.scrollTo(scroll!.scrollHeight) },
+          ],
+        }));
         return (
         <box flexDirection="column" paddingLeft={2} paddingRight={2} height={26}>
           <box flexDirection="row" flexShrink={0} gap={1}>
@@ -149,7 +169,7 @@ export default Plugin.define({
             </text>
           </box>
           <box height={1} flexShrink={0} border={["top"]} borderColor={pal().muted} />
-          <scrollbox focused flexGrow={1} flexBasis={0} minHeight={0}>
+          <scrollbox ref={(el: any) => (scroll = el)} flexGrow={1} flexBasis={0} minHeight={0}>
             {graph?.entities.map((e) => (
               <box flexDirection="column" flexShrink={0} marginBottom={1}>
                 <box flexDirection="row" gap={1}>
@@ -181,12 +201,42 @@ export default Plugin.define({
             {!graph && <text fg={pal().muted}>No memory file found.</text>}
             {graph && graph.entities.length === 0 && <text fg={pal().muted}>Empty.</text>}
           </scrollbox>
-          <text fg={pal().muted} flexShrink={0}>{"esc close · wheel/↑↓/PgUp/PgDn scroll · Home/End jump"}</text>
+          <text fg={pal().muted} flexShrink={0}>{"esc close · j/k line · ctrl+d/u half page · g/G top/bottom"}</text>
         </box>
         );
       });
       context.ui.dialog.set({ size: "xlarge", centered: true });
     };
+
+    const openGlobal = () => open("Global", ICON.globe, "global", join(GLOBAL_DIR, FILE));
+    const openProject = () => open("Project", ICON.folder, "project", currentProject());
+
+    // `bind` is the default; override it in cli.json under keybinds by command id.
+    context.keymap.layer(() => ({
+      mode: "global",
+      commands: [
+        {
+          id: "memory-ticker.project",
+          title: "Show project memory",
+          group: "Memory",
+          bind: "<leader>k",
+          palette: true,
+          slash: { name: "memory" },
+          run: openProject,
+        },
+        {
+          id: "memory-ticker.global",
+          title: "Show global memory",
+          group: "Memory",
+          bind: "<leader>shift+k",
+          palette: true,
+          slash: { name: "memory-global" },
+          run: openGlobal,
+        },
+      ],
+      // Activates the bindings configured for these ids (cli.json overrides `bind`).
+      bindings: ["memory-ticker.project", "memory-ticker.global"],
+    }));
 
     const Ticker = (props: { compact?: boolean }) => {
       const ctx = usePlugin();
@@ -221,11 +271,11 @@ export default Plugin.define({
           width={forced() ? undefined : fullWidth()}
           minWidth={forced() ? undefined : iconsWidth}
         >
-          <box flexDirection="row" flexShrink={0} onMouseUp={() => open("Global", ICON.globe, "global", join(GLOBAL_DIR, FILE))}>
+          <box flexDirection="row" flexShrink={0} onMouseUp={openGlobal}>
             <text fg={pal().global}>{ICON.globe}</text>
             <text fg={pal().muted}>{counts(state.g)}</text>
           </box>
-          <box flexDirection="row" flexShrink={0} onMouseUp={() => open("Project", ICON.folder, "project", currentProject())}>
+          <box flexDirection="row" flexShrink={0} onMouseUp={openProject}>
             <text fg={hasProject() ? pal().project : pal().muted}>{hasProject() ? ICON.folder : ICON.folderOpen}</text>
             <text fg={pal().muted}>{counts(state.p)}</text>
           </box>
