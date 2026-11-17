@@ -5,7 +5,7 @@
  * Configure the global store once, in opencode.jsonc:
  *
  *   "plugins": [
- *     { "package": "./plugins/memory-ticker", "options": { "globalPath": "~/.config/.aim" } }
+ *     { "package": "./configured-plugins/memory-ticker", "options": { "globalPath": "~/.config/.aim" } }
  *   ]
  *
  * Without `globalPath` it falls back to ~/.aim. Project memory needs no config:

@@ -119,9 +119,18 @@
     "opencode-kiro@0.5.0-beta.7",
     // Memory MCP + footer widget. `globalPath` is where global .aim memory lives (default ~/.aim).
     {
-      "package": "./plugins/memory-ticker",
+      "package": "./configured-plugins/memory-ticker",
       "options": {
         "globalPath": "~/.config/.aim"
+      }
+    },
+    // Claude Code style auto mode: a reviewer model approves/denies permission checks. See configured-plugins/auto-mode/README.md.
+    {
+      "package": "./configured-plugins/auto-mode",
+      "options": {
+        "model": "github-copilot/claude-haiku-5.5",
+        "memoryDir": "~/.config/.aim",
+        "includeAgentsMd": false
       }
     }
   ],

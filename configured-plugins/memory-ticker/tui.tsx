@@ -7,7 +7,7 @@
 import { Plugin, usePlugin } from "@opencode/plugin/tui";
 import { useTerminalDimensions } from "@opentui/solid";
 import { createSignal } from "solid-js";
-import { TextAttributes } from "@opentui/core";
+import { RGBA, TextAttributes } from "@opentui/core";
 import { existsSync, readFileSync, watch, type FSWatcher } from "node:fs";
 import { dirname, join } from "node:path";
 import { resolveGlobalDir } from "./config.ts";
@@ -48,15 +48,27 @@ function projectDir(start: string | undefined): string | undefined {
 const ICON = { globe: "\uF0AC", folder: "\uF07B", folderOpen: "\uF115" };
 const COMPACT_BELOW = 100;
 
-// Accent colours mirror the ANSI palette of the Ghostty themes
-// ("Peva Rose Pine" / "Peva Rose Pine Dawn": palette 4 foam, 3 gold, 5 iris,
-// 6 rose), picked by the TUI's light/dark mode. Text colours follow the theme.
-const ANSI = {
-  dark: { global: "#9ccfd8", project: "#f6c177", entity: "#c4a7e7", relation: "#ebbcba" },
-  light: { global: "#56949f", project: "#ea9d34", entity: "#907aa9", relation: "#d7827e" },
+// Accent colours are terminal palette slots, so Ghostty's theme supplies them
+// and they follow its light/dark switch: 4 foam, 3 gold, 5 iris, 6 rose. The
+// hex values (Peva Rose Pine) are only used when the palette is unknown.
+// Text colours follow the OpenCode theme.
+function ansi(index: number, fallback: string) {
+  const from = (RGBA as any)?.fromIndex;
+  if (typeof from === "function") {
+    try {
+      return from.call(RGBA, index, fallback);
+    } catch {}
+  }
+  return fallback;
+}
+const ACCENT = {
+  global: ansi(4, "#9ccfd8"),
+  project: ansi(3, "#f6c177"),
+  entity: ansi(5, "#c4a7e7"),
+  relation: ansi(6, "#ebbcba"),
 };
-const palette = (ctx: { theme: any; themeMode: "dark" | "light" }) => ({
-  ...ANSI[ctx.themeMode === "light" ? "light" : "dark"],
+const palette = (ctx: { theme: any }) => ({
+  ...ACCENT,
   muted: ctx.theme.text.muted,
   text: ctx.theme.text.base,
 });

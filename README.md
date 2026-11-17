@@ -106,9 +106,9 @@ NOTION_EXJOBB_API_TOKEN=
 
 OpenAI authentication is handled by the `opencode-openai-codex-auth` OAuth plugin, so no `OPENAI_API_KEY` is needed (if you want to use your chatgpt-plus plan).
 
-### tui.json
+### cli.json
 
-Custom keybindings: leader key is `ctrl+o`, submit with `enter`, newline with `alt+enter` or `ctrl+j`.
+Terminal UI settings and keybindings: leader key is `ctrl+o`, submit with `enter`, newline with `alt+enter` or `ctrl+j`. Plugin shortcuts: `<leader>k` / `<leader>shift+k` (project / global memory), `<leader>d` (auto-mode decisions).
 
 ## Agents
 
@@ -157,7 +157,7 @@ Skills are loaded on demand when a task matches their description.
 | Server | Type | Description |
 |--------|------|-------------|
 | `context7` | Remote | Library documentation lookup |
-| `memory` | Local (npx) | Persistent AI memory via knowledge graph |
+| `memory` | Local (npx) | Persistent AI memory via knowledge graph (registered by the `memory-ticker` plugin, not in `opencode.jsonc`) |
 | `sequentialthinking` | Local (Podman) | Structured reasoning |
 | `time` | Local (Podman) | Timezone operations |
 
@@ -181,12 +181,37 @@ Skills are loaded on demand when a task matches their description.
 
 To enable a disabled server, set `"enabled": true` in `opencode.jsonc`.
 
+## Plugins
+
+OpenCode auto-loads every directory under `plugins/`, but **without options**.
+Plugins that need options therefore live in `configured-plugins/` and are
+registered with their options in `opencode.jsonc` (keeping them in `plugins/`
+would load a second, unconfigured copy).
+
+### Configured (`configured-plugins/`, registered in `opencode.jsonc`)
+
+| Plugin | What it does |
+|--------|--------------|
+| `memory-ticker` | Registers the `memory` MCP server (option `globalPath`: where global memory lives, `~/.config/.aim`) and adds a footer widget with entity/observation/relation counts for global and project memory. Click a segment, or `<leader>k` / `<leader>shift+k`, to browse the memories. |
+| `auto-mode` | Claude Code style auto mode: a reviewer model (`github-copilot/claude-haiku-5.5`) approves, denies or asks on each permission check, so you're only asked when it matters. Sidebar list of decisions with reviewer cost, a decisions/settings modal (`<leader>d`, `/auto-mode`), vigilance after a deny, dotfiles never read without review. See `configured-plugins/auto-mode/README.md`; agents working on it should read its `OUTLINE.md` first. |
+
+auto-mode reads extra reviewer rules from `AUTO_MODE_INSTRUCTIONS.md` in this
+folder (global) or a project's `.opencode/` (per project). Its decision log and
+error log are in `~/.local/state/opencode-auto-mode/`.
+
+### Auto-loaded (`plugins/`, no options)
+
+| Plugin | What it does |
+|--------|--------------|
+| `gemma-think` | Makes Gemma 4 thinking blocks show up correctly (LM Studio) |
+| `opencode-kiro-model-loader` | Git submodule. Keeps the `kiro` provider's model list current via `kiro-cli` (works with the `opencode-kiro` npm plugin) |
+
 ## Memory system
 
 Agents use AIM (AI Memory), a persistent knowledge graph backed by the `memory` MCP server (`mcp-knowledge-graph`). Instructions live in `AGENTS.md`.
 
 - **Global** and **project** scopes are both always read and written explicitly by the agent
-- Where each scope is stored is decided by the `--memory-path` argument of the `memory` server in `opencode.jsonc` (`~/.config/.aim/`), not by the agent
+- The `memory` server is registered by the `memory-ticker` plugin; global memory is stored where its `globalPath` option points (`~/.config/.aim/`), project memory in a project's `.aim/` folder
 
 ---
 
