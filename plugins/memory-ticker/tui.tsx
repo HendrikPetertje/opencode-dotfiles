@@ -5,6 +5,7 @@
  * dialog listing the memories when a segment is clicked.
  */
 import { Plugin, usePlugin } from "@opencode/plugin/tui";
+import { useTerminalDimensions } from "@opentui/solid";
 import { TextAttributes } from "@opentui/core";
 import { existsSync, readFileSync, watch, type FSWatcher } from "node:fs";
 import { homedir } from "node:os";
@@ -42,7 +43,8 @@ function projectDir(start: string | undefined): string | undefined {
   }
 }
 
-const ICON = { globe: "\uF0AC", folder: "\uF07B", empty: "\u{F0159}" };
+const ICON = { globe: "\uF0AC", folder: "\uF07B", folderOpen: "\uF115" };
+const COMPACT_BELOW = 100;
 
 // Accent colours mirror the ANSI palette of the Ghostty themes
 // ("Peva Rose Pine" / "Peva Rose Pine Dawn": palette 4 foam, 3 gold, 5 iris,
@@ -57,7 +59,7 @@ const palette = (ctx: { theme: any; themeMode: "dark" | "light" }) => ({
   text: ctx.theme.text.base,
 });
 
-const fmt = (c: Counts) => (c ? `${c.e}E ${c.o}O ${c.r}R` : ICON.empty);
+const fmt = (c: Counts) => (c ? `${c.e}E ${c.o}O ${c.r}R` : "");
 
 type Entity = { name: string; type: string; observations: string[] };
 type Relation = { from: string; to: string; type: string };
@@ -178,21 +180,31 @@ export default Plugin.define({
 
     const Ticker = () => {
       const ctx = usePlugin();
+      const dims = useTerminalDimensions();
       const pal = () => palette(ctx);
+      const compact = () => dims().width < COMPACT_BELOW;
+      const hasProject = () => state.p !== "";
+      const label = (icon: string, counts: string) => (compact() || !counts ? icon : `${icon} ${counts}`);
       return (
-      <box flexDirection="row" flexShrink={0} gap={2}>
-        <box onMouseUp={() => open("Global", ICON.globe, "global", join(GLOBAL_DIR, FILE))}>
-          <text fg={pal().global}>{`${ICON.globe} ${state.g}`}</text>
+        <box flexDirection="row" flexShrink={0} gap={2}>
+          <box onMouseUp={() => open("Global", ICON.globe, "global", join(GLOBAL_DIR, FILE))}>
+            <text fg={pal().global}>{label(ICON.globe, state.g)}</text>
+          </box>
+          <box onMouseUp={() => open("Project", ICON.folder, "project", currentProject())}>
+            <text fg={hasProject() ? pal().project : pal().muted}>
+              {label(hasProject() ? ICON.folder : ICON.folderOpen, state.p)}
+            </text>
+          </box>
         </box>
-        <box onMouseUp={() => open("Project", ICON.folder, "project", currentProject())}>
-          <text fg={pal().project}>{`${ICON.folder} ${state.p}`}</text>
-        </box>
-        <text fg={pal().muted}>{"│"}</text>
-      </box>
       );
     };
     const stopHome = context.ui.slot({ append: "home.footer.status", render: () => <Ticker /> });
-    const stopPrompt = context.ui.slot({ append: "prompt.footer.status", render: () => <Ticker /> });
+    // The prompt footer also appears under the big input on the home screen,
+    // where home.footer already shows the widget, so only render it in sessions.
+    const stopPrompt = context.ui.slot({
+      append: "prompt.footer.status",
+      render: () => (context.ui.router.current()?.type === "session" ? <Ticker /> : null),
+    });
 
     return () => {
       clearInterval(poll);
