@@ -246,7 +246,8 @@ export default Plugin.define({
       const forced = () => props.compact === true || dims().width < COMPACT_BELOW;
 
       // Cells needed for the full widget (icon + " counts" per segment + gap) vs icons only.
-      const seg = (counts: string) => 1 + (counts ? 1 + counts.length : 0);
+      const label = (text: string) => text || "None";
+      const seg = (counts: string) => 1 + 1 + label(counts).length;
       const fullWidth = () => seg(state.g) + 2 + seg(state.p);
       // Nerd Font glyphs can render two cells wide, so leave slack for two icons plus a gap.
       const iconsWidth = 2 + 1 + 2;
@@ -258,7 +259,7 @@ export default Plugin.define({
       let box: { width: number } | undefined;
       const squeezed = () => !forced() && laidOut() < fullWidth();
       const compact = () => forced() || squeezed();
-      const counts = (text: string) => (compact() || !text ? "" : ` ${text}`);
+      const counts = (text: string) => (compact() ? "" : ` ${label(text)}`);
 
       return (
         <box
@@ -276,7 +277,7 @@ export default Plugin.define({
             <text fg={pal().muted}>{counts(state.g)}</text>
           </box>
           <box flexDirection="row" flexShrink={0} onMouseUp={openProject}>
-            <text fg={hasProject() ? pal().project : pal().muted}>{hasProject() ? ICON.folder : ICON.folderOpen}</text>
+            <text fg={pal().project}>{hasProject() ? ICON.folder : ICON.folderOpen}</text>
             <text fg={pal().muted}>{counts(state.p)}</text>
           </box>
         </box>
