@@ -6,13 +6,15 @@
  */
 import { Plugin, usePlugin } from "@opencode/plugin/tui";
 import { useTerminalDimensions } from "@opentui/solid";
+import { createSignal } from "solid-js";
 import { TextAttributes } from "@opentui/core";
 import { existsSync, readFileSync, watch, type FSWatcher } from "node:fs";
-import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { resolveGlobalDir } from "./config.ts";
+import { MemoryConfig } from "./rpc.ts";
 
 const FILE = "memory-current.jsonl";
-const GLOBAL_DIR = join(process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config"), ".aim");
+let GLOBAL_DIR = resolveGlobalDir(undefined);
 
 type Counts = { e: number; o: number; r: number } | undefined;
 
@@ -59,7 +61,7 @@ const palette = (ctx: { theme: any; themeMode: "dark" | "light" }) => ({
   text: ctx.theme.text.base,
 });
 
-const fmt = (c: Counts) => (c ? `${c.e}E ${c.o}O ${c.r}R` : "");
+const fmt = (c: Counts) => (c ? `${c.e}e ${c.o}o ${c.r}r` : "");
 
 type Entity = { name: string; type: string; observations: string[] };
 type Relation = { from: string; to: string; type: string };
@@ -84,7 +86,15 @@ function load(file: string | undefined): Graph {
 
 export default Plugin.define({
   id: "memory-ticker.tui",
-  setup(context) {
+  async setup(context) {
+    try {
+      const location = context.location ?? context.data.location.default();
+      const reply = (await context.client.rpc(MemoryConfig).globalDir({}, { location })) as { path: string };
+      GLOBAL_DIR = reply.path;
+    } catch (error) {
+      console.error("[memory-ticker] could not read global path from server:", (error as Error).message);
+      GLOBAL_DIR = resolveGlobalDir(context.options);
+    }
     const [state, update] = context.storage.memory("memory-ticker", {
       initial: { g: "…", p: "…" },
     });
@@ -178,22 +188,46 @@ export default Plugin.define({
       context.ui.dialog.set({ size: "xlarge", centered: true });
     };
 
-    const Ticker = () => {
+    const Ticker = (props: { compact?: boolean }) => {
       const ctx = usePlugin();
       const dims = useTerminalDimensions();
       const pal = () => palette(ctx);
-      const compact = () => dims().width < COMPACT_BELOW;
       const hasProject = () => state.p !== "";
-      const label = (icon: string, counts: string) => (compact() || !counts ? icon : `${icon} ${counts}`);
+      const forced = () => props.compact === true || dims().width < COMPACT_BELOW;
+
+      // Cells needed for the full widget (icon + " counts" per segment + gap) vs icons only.
+      const seg = (counts: string) => 1 + (counts ? 1 + counts.length : 0);
+      const fullWidth = () => seg(state.g) + 2 + seg(state.p);
+      // Nerd Font glyphs can render two cells wide, so leave slack for two icons plus a gap.
+      const iconsWidth = 2 + 1 + 2;
+
+      // The box may shrink below fullWidth like other footer items do. When the
+      // host leaves it less room than it needs, fall back to icons only; when
+      // the room comes back, the measured width grows again and counts return.
+      const [laidOut, setLaidOut] = createSignal(Number.POSITIVE_INFINITY);
+      let box: { width: number } | undefined;
+      const squeezed = () => !forced() && laidOut() < fullWidth();
+      const compact = () => forced() || squeezed();
+      const counts = (text: string) => (compact() || !text ? "" : ` ${text}`);
+
       return (
-        <box flexDirection="row" flexShrink={0} gap={2}>
-          <box onMouseUp={() => open("Global", ICON.globe, "global", join(GLOBAL_DIR, FILE))}>
-            <text fg={pal().global}>{label(ICON.globe, state.g)}</text>
+        <box
+          ref={(el: { width: number }) => (box = el)}
+          onSizeChange={() => box && setLaidOut(box.width)}
+          flexDirection="row"
+          flexShrink={forced() ? 0 : 1}
+          overflow={forced() ? "visible" : "hidden"}
+          gap={compact() ? 1 : 2}
+          width={forced() ? undefined : fullWidth()}
+          minWidth={forced() ? undefined : iconsWidth}
+        >
+          <box flexDirection="row" flexShrink={0} onMouseUp={() => open("Global", ICON.globe, "global", join(GLOBAL_DIR, FILE))}>
+            <text fg={pal().global}>{ICON.globe}</text>
+            <text fg={pal().muted}>{counts(state.g)}</text>
           </box>
-          <box onMouseUp={() => open("Project", ICON.folder, "project", currentProject())}>
-            <text fg={hasProject() ? pal().project : pal().muted}>
-              {label(hasProject() ? ICON.folder : ICON.folderOpen, state.p)}
-            </text>
+          <box flexDirection="row" flexShrink={0} onMouseUp={() => open("Project", ICON.folder, "project", currentProject())}>
+            <text fg={hasProject() ? pal().project : pal().muted}>{hasProject() ? ICON.folder : ICON.folderOpen}</text>
+            <text fg={pal().muted}>{counts(state.p)}</text>
           </box>
         </box>
       );
@@ -203,7 +237,10 @@ export default Plugin.define({
     // where home.footer already shows the widget, so only render it in sessions.
     const stopPrompt = context.ui.slot({
       append: "prompt.footer.status",
-      render: () => (context.ui.router.current()?.type === "session" ? <Ticker /> : null),
+      render: (input) =>
+        context.ui.router.current()?.type === "session" ? (
+          <Ticker compact={input.mode === "shell"} />
+        ) : null,
     });
 
     return () => {
