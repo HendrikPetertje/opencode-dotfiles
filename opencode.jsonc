@@ -124,6 +124,27 @@
         "globalPath": "~/.config/.aim"
       }
     },
+    // Opt-in OS sandbox for the agent's shell, per project. See configured-plugins/sandbox-mode/README.md.
+    {
+      "package": "./configured-plugins/sandbox-mode",
+      "options": {
+        "credentialPaths": [
+          "~/.ssh",
+          "~/.aws",
+          "~/.azure",
+          "~/.config/gcloud",
+          "~/.config/gh",
+          "~/.gnupg",
+          "~/.docker/config.json",
+          "~/.kube",
+          "~/.netrc",
+          "~/.npmrc",
+          "~/.git-credentials",
+          "~/.local/share/opencode/auth.json",
+          "~/.dotfiles/tmux-envs"
+        ]
+      }
+    },
     // Claude Code style auto mode: a reviewer model approves/denies permission checks. See configured-plugins/auto-mode/README.md.
     {
       "package": "./configured-plugins/auto-mode",

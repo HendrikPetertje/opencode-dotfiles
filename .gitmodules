@@ -9,3 +9,7 @@
 	path = configured-plugins/auto-mode
 	url = https://github.com/HendrikPetertje/opencode-auto-mode.git
 	branch = main
+[submodule "configured-plugins/sandbox-mode"]
+	path = configured-plugins/sandbox-mode
+	url = https://github.com/HendrikPetertje/opencode-sandbox-mode.git
+	branch = main
