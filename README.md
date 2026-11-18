@@ -38,15 +38,18 @@ Copy the lines below to your .zshrc / .bashrc / etc.
 Install OpenCode and its companion tools:
 
 ```bash
-function install_opencode() {
+function install_opencode () {
+  echo "Removing old opencode install (if present)"
+  npm uninstall -g opencode-ai 2> /dev/null
+  echo "Allowing opencode postinstall script to run (idempotent)"
+  npm config set allow-scripts="@opencode/cli" --location=user
   echo "Installing opencode itself"
-  npm install -g opencode-ai
+  npm install -g @opencode/cli
+  echo "Ensuring opencode postinstall actually ran"
+  npm rebuild -g @opencode/cli 2> /dev/null
   echo "Installing openspec"
   npm install -g @fission-ai/openspec@latest
-  echo "Installing open-ai codex auth"
-  npx -y opencode-openai-codex-auth@latest
-
-  echo -e "please run the following command to authenticate to github & openAI plus (if needed)\nopencode auth login"
+  echo 'DONE'
 }
 ```
 
@@ -81,30 +84,6 @@ created automagically on first run and updated as you install plugins and MCP se
 
 ## Configuration
 
-### ENV variables
-
-Your secrets env file should export the following keys:
-
-```bash
-ANTHROPIC_API_KEY=
-OPENCODE_FAST_MODEL=
-OPENCODE_BIG_MODEL=
-AIM_GLOBAL_PATH=
-CONTEXT7_API_KEY=
-GITHUB_PERSONAL_ACCESS_TOKEN=
-JIRA_TOKEN=
-JIRA_BASE_URL=
-CONFLUENCE_TOKEN=
-CONFLUENCE_BASE_URL=
-CONFLUENCE_DEFAULT_SPACE=
-NOTION_API_TOKEN=
-TAVILY_API_KEY=
-REF_MCP_API_KEY=
-OBSIDIAN_API_KEY=
-NOTION_EXJOBB_API_TOKEN=
-```
-
-OpenAI authentication is handled by the `opencode-openai-codex-auth` OAuth plugin, so no `OPENAI_API_KEY` is needed (if you want to use your chatgpt-plus plan).
 
 ### cli.json
 
@@ -215,4 +194,4 @@ Agents use AIM (AI Memory), a persistent knowledge graph backed by the `memory` 
 
 ---
 
-Last updated at commit `a4b87de`.
+Last updated at commit `9fca87aa`.

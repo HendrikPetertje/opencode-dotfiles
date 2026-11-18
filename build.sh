@@ -21,9 +21,19 @@ git submodule foreach --quiet '
     echo "$sm_path: pinned at $(git rev-parse --short HEAD) (differs from origin/$branch), leaving detached"
   fi
 
-  if [ -f package.json ] && jq -e ".scripts.build" package.json >/dev/null; then
-    echo "$sm_path: installing and building"
-    npm ci --silent --no-fund --no-audit
+  # Peers (@opencode/plugin, @opentui/*, solid-js) must stay the host copies,
+  # so they are never installed into a plugin.
+  [ -f package.json ] || exit 0
+  has_build=$(jq -e ".scripts.build" package.json >/dev/null && echo 1 || true)
+  has_deps=$(jq -e "(.dependencies // {}) | length > 0" package.json >/dev/null && echo 1 || true)
+  if [ -n "$has_build" ] || [ -n "$has_deps" ]; then
+    echo "$sm_path: installing dependencies"
+    npm_flags="--silent --no-fund --no-audit --legacy-peer-deps"
+    [ -n "$has_build" ] || npm_flags="$npm_flags --omit=dev"
+    if [ -f package-lock.json ]; then npm ci $npm_flags; else npm install $npm_flags; fi
+  fi
+  if [ -n "$has_build" ]; then
+    echo "$sm_path: building"
     npm run --silent build
   fi
 '

@@ -13,7 +13,7 @@ Do not use that directory (or any other host temp directory) as the default plac
 
 Exceptions, where running directly on the host is fine:
 - The code explicitly needs to touch things on this system itself (host files, host config, host tools, etc.).
-- The current OS is Debian Bookworm and opencode is already running in a sandbox.
+- sandbox-mode is on (`OPENCODE_SANDBOX` is set in the shell) and podman is not available because of the sandbox restrictions (e.g. `podman ps` fails). Then create the experiment in its own new directory under `$TMPDIR` (made with `mktemp -d`), never in the project, and remove that directory when you are done, also when the experiment failed. Nothing cleans it up when the sandbox ends: the sandbox only allows writes to the project and the temp folders, and does not empty them. Do not work around the restrictions in any other way, and do not run anything that needs more access than the sandbox gives.
 
 # Lightweight Explorer
 The lightweight-explorer can be used to perform certain tasks outlined below.

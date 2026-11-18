@@ -1,11 +1,11 @@
 {
-  "$schema": "https://opencode.ai/config.json",
+  "$schema": "https://opencode.ai/v2/config.json",
   "update": "auto",
   "instructions": [
     "AGENTS.md"
   ],
-  // Don't share sessions with others automatically
-  "share": "manual",
+  // Don't share sessions with others
+  "share": "disabled",
   "default_agent": "plan",
   "agents": {
     // Some models don't need to be running OPUS al the time.
@@ -128,21 +128,8 @@
     {
       "package": "./configured-plugins/sandbox-mode",
       "options": {
-        "credentialPaths": [
-          "~/.ssh",
-          "~/.aws",
-          "~/.azure",
-          "~/.config/gcloud",
-          "~/.config/gh",
-          "~/.gnupg",
-          "~/.docker/config.json",
-          "~/.kube",
-          "~/.netrc",
-          "~/.npmrc",
-          "~/.git-credentials",
-          "~/.local/share/opencode/auth.json",
-          "~/.dotfiles/tmux-envs"
-        ]
+        // Machine-specific options (credentialPaths, homeLinks) live in a git-ignored file next to this one.
+        "extends": "./sandbox-mode.jsonc"
       }
     },
     // Claude Code style auto mode: a reviewer model approves/denies permission checks. See configured-plugins/auto-mode/README.md.
@@ -180,7 +167,7 @@
           "--rm",
           "peva-calculator-mcp:latest"
         ],
-        "disabled": true
+        // "disabled": true
       },
       "chrome-devtools": {
         "type": "local",

@@ -1,0 +1,3 @@
+[install]
+# 48 hours
+minimumReleaseAge = 172800
