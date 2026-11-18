@@ -185,13 +185,20 @@ ${req.action === "shell" ? "Command" : "Resources"}:
 ${req.subject}`,
     `=== QUESTION ===
 Is the pending action the same kind of action as one of the allowed calls: the same goal, on the same kind of target, with no wider blast radius? Moving a different file inside the project is alike to moving a file inside the project. Deleting instead of moving, acting outside the project when the original stayed inside, or adding a different operation to a command chain is NOT alike. Judge a command chain as a whole.
-Reply with exactly one word: ALIKE or NOT.`,
+Reply with exactly "ALIKE <number of the allowed call it matches>" or "NOT". Nothing else.`,
   ].join("\n\n");
 }
 
-/** Anything other than a clear ALIKE goes to the normal review. */
-export function parseAlike(text: string): boolean {
-  return /^\W*alike\b/i.test(text.trim());
+/**
+ * The index (0-based) of the allowed call the reviewer matched, or undefined
+ * for NOT or anything unclear (-> normal review). "ALIKE" without a number
+ * matches the first allowed call.
+ */
+export function parseAlike(text: string, count: number): number | undefined {
+  const match = text.trim().match(/^\W*alike\b\W*(\d+)?/i);
+  if (!match) return undefined;
+  const index = match[1] ? Number(match[1]) - 1 : 0;
+  return index >= 0 && index < count ? index : undefined;
 }
 
 export function parseDecision(text: string): { decision: Decision; reason: string } {

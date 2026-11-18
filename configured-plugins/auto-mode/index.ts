@@ -10,7 +10,8 @@ import { parseModel, parseOptions } from "./src/options.ts";
 import {
   addAllow,
   exactKey,
-  NO_ALWAYS,
+  DEFAULT_ALIKE_TOOLS,
+  isAlikeTool,
   OVERRIDES,
   removeAllow,
   type AlikeEntry,
@@ -62,18 +63,25 @@ function validOverrides(stored: unknown): Record<string, Override> {
   return result;
 }
 
+/** Removes every `allow` marker on rows of this tool (whole-tool allows are marked on their origin row). */
+function clearToolAllows(sess: SessionState, action: string): void {
+  for (const [key, mode] of Object.entries(sess.overrides)) {
+    if (mode === "allow" && key.startsWith(`${action}\u0000`)) delete sess.overrides[key];
+  }
+}
+
 /** A row's mode as the modal shows it: a whole-tool allow shows on every row of that tool. */
-function modeFor(sess: SessionState, action: string, subject: string): Override {
+function modeFor(sess: SessionState, alikeTools: readonly string[], action: string, subject: string): Override {
   const own = sess.overrides[exactKey(action, subject)];
   if (own) return own;
-  return !NO_ALWAYS.has(action) && sess.always.includes(action) ? "allow" : "check";
+  return !isAlikeTool(action, alikeTools) && sess.always.includes(action) ? "allow" : "check";
 }
 
 interface SessionState {
   overrides: Record<string, Override>;
   /** "Allow" on an ordinary tool: every call to it, whatever the input. */
   always: string[];
-  /** "Allow" on a `NO_ALWAYS` tool: the reviewer compares later calls with these. */
+  /** "Allow" on a `alikeTools` tool: the reviewer compares later calls with these. */
   alikes: AlikeEntry[];
 }
 
@@ -108,7 +116,9 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 export default Plugin.define({
   id: "auto-mode",
   async setup(ctx) {
-    const options = parseOptions(ctx.options as Record<string, unknown>);
+    const parsed = parseOptions(ctx.options as Record<string, unknown>);
+    // A hot reload can pair this file with an older options.ts that predates `alikeTools`.
+    const options = { ...parsed, alikeTools: Array.isArray(parsed.alikeTools) ? parsed.alikeTools : [...DEFAULT_ALIKE_TOOLS] };
     const policy = policyFrom(options.policy);
     /** The project's picked reviewer, else the `model` option. */
     const reviewerFor = (settings: ProjectSettings) => parseModel(settings.model) ?? options.model;
@@ -311,7 +321,9 @@ export default Plugin.define({
       await ensureRecords(info.rootID);
       const list = (records.get(info.rootID) ?? []).map((record) => ({
         ...record,
-        override: sess ? modeFor(sess, record.action, record.subject) : "check",
+        override: sess ? modeFor(sess, options.alikeTools, record.action, record.subject) : "check",
+        /** The user set allow on this exact call (the rule's origin), not just covered by it. */
+        allowOrigin: sess?.overrides[exactKey(record.action, record.subject)] === "allow",
       }));
       return {
         enabled: global.enabled,
@@ -327,6 +339,7 @@ export default Plugin.define({
         rootID: info.rootID,
         records: list,
         allowed: { tools: sess?.always ?? [], alikes: sess?.alikes ?? [] },
+        alikeTools: options.alikeTools,
         cost: costs.get(info.rootID) ?? emptyCost(),
         guard: (guards.get(info.rootID) ?? idleGuard()).remaining,
       };
@@ -376,11 +389,14 @@ export default Plugin.define({
           const key = exactKey(record.action, record.subject);
           if (value === "allow") {
             const goal = latestUserText(await messagesFor(record.sessionID));
-            addAllow(sess, record.action, record.subject, goal);
-          } else if (modeFor(sess, record.action, record.subject) === "allow") {
-            removeAllow(sess, record.action, record.subject);
+            addAllow(sess, options.alikeTools, record.action, record.subject, goal);
+          } else if (modeFor(sess, options.alikeTools, record.action, record.subject) === "allow") {
+            removeAllow(sess, options.alikeTools, record.action, record.subject);
+            // A whole-tool allow is marked on the row it was set on; clear that marker too.
+            if (!isAlikeTool(record.action, options.alikeTools)) clearToolAllows(sess, record.action);
           }
-          if (value === "check" || (value === "allow" && !NO_ALWAYS.has(record.action))) delete sess.overrides[key];
+          // The row an allow is set on keeps an `allow` override: it marks where the rule came from.
+          if (value === "check") delete sess.overrides[key];
           else sess.overrides[key] = value;
           approvedExact.get(record.rootID)?.delete(key);
           refused.get(record.rootID)?.delete(key);
@@ -594,7 +610,7 @@ export default Plugin.define({
       return escalate(event, record, "reviewer", reason);
     };
 
-    /** "Always allow" on a `NO_ALWAYS` tool: does the reviewer find this call alike to one the user allowed? */
+    /** "Always allow" on a `alikeTools` tool: does the reviewer find this call alike to one the user allowed? */
     const alikeCheck = async (
       event: any,
       record: CallRecord,
@@ -603,7 +619,7 @@ export default Plugin.define({
       settings: ProjectSettings,
       model: ModelRef,
       alikes: AlikeEntry[],
-    ): Promise<boolean> => {
+    ): Promise<AlikeEntry | undefined> => {
       record.status = "reviewing";
       record.reason = "";
       emit(record.rootID);
@@ -625,7 +641,8 @@ export default Plugin.define({
       const system = systemPrompt(policy, docs.background, docs.instructions);
       if (info.provider && info.provider !== model.providerID) textOnly.add(pairKey(event.sessionID, model));
       const answer = await ask(event.sessionID, record.rootID, model, system, alikePrompt(request, alikes));
-      return answer !== undefined && parseAlike(answer);
+      const index = answer === undefined ? undefined : parseAlike(answer, alikes.length);
+      return index === undefined ? undefined : alikes[index];
     };
 
     const approved = (rootID: string) => {
@@ -776,7 +793,11 @@ export default Plugin.define({
         const override = sess.overrides[key];
         if (override === "deny") return deny(event, record, "override", "you set this command to deny for this session");
         if (override === "allow") return allow(event, record, "override", "you allowed this command for this session");
-        if (override !== "check" && !NO_ALWAYS.has(event.action) && sess.always.includes(event.action)) {
+        if (override !== "check" && !isAlikeTool(event.action, options.alikeTools) && sess.always.includes(event.action)) {
+          const origin = Object.entries(sess.overrides).find(
+            ([other, mode]) => mode === "allow" && other.startsWith(`${event.action}\u0000`) && other !== key,
+          );
+          if (origin) record.allowedBy = { action: event.action, subject: origin[0].slice(event.action.length + 1) };
           return allow(event, record, "always", "you always allowed this tool for this session");
         }
 
@@ -801,7 +822,9 @@ export default Plugin.define({
         }
         const alikes = sess.alikes.filter((entry) => entry.action === event.action);
         if (override !== "check" && alikes.length > 0 && !onGuard(guards.get(info.rootID))) {
-          if (await alikeCheck(event, record, info, all, proj.settings, reviewer, alikes)) {
+          const match = await alikeCheck(event, record, info, all, proj.settings, reviewer, alikes);
+          if (match) {
+            record.allowedBy = { action: match.action, subject: match.subject };
             return allow(event, record, "alike", "the reviewer found it alike to a call you always allowed this session");
           }
         }
@@ -813,7 +836,7 @@ export default Plugin.define({
       }
     });
 
-    // "Always allow" on a prompt, for this session: the whole tool, or for `NO_ALWAYS` tools an alike rule the reviewer checks.
+    // "Always allow" on a prompt, for this session: the whole tool, or for `alikeTools` tools an alike rule the reviewer checks.
     const abort = new AbortController();
     const asked = new Map<string, { sessionID: string; action: string; callID?: string }>();
     void (async () => {
@@ -838,8 +861,8 @@ export default Plugin.define({
             if (!record) continue;
             const sess = await session(info.rootID);
             // Same as "allow" on the row in the modal.
-            addAllow(sess, record.action, record.subject, latestUserText(await messagesFor(request.sessionID)));
-            if (NO_ALWAYS.has(record.action)) sess.overrides[exactKey(record.action, record.subject)] = "allow";
+            addAllow(sess, options.alikeTools, record.action, record.subject, latestUserText(await messagesFor(request.sessionID)));
+            sess.overrides[exactKey(record.action, record.subject)] = "allow";
             await save(`session:${info.rootID}`, sess);
             emit(info.rootID);
           }

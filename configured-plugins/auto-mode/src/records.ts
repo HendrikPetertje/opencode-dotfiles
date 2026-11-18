@@ -45,6 +45,8 @@ export interface CallRecord {
   /** Shows which edit-type calls the yolo filter hides. */
   edit: boolean;
   override?: Override;
+  /** The call whose allow covered this one (whole-tool or alike), so the modal can jump to it. */
+  allowedBy?: { action: string; subject: string };
 }
 
 export function shorten(record: Pick<CallRecord, "action" | "subject">, max: number): string {

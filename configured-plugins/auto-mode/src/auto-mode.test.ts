@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { addAllow, cycle, NO_ALWAYS, removeAllow } from "./overrides.ts";
+import { addAllow, cycle, DEFAULT_ALIKE_TOOLS, isAlikeTool, removeAllow } from "./overrides.ts";
 import { userDecides, type Rule } from "./config-rules.ts";
 import { parseJsonc } from "./jsonc.ts";
 import { parseModel, parseOptions } from "./options.ts";
@@ -190,13 +190,13 @@ describe("overrides", () => {
   });
   test("allow is the whole tool, or an alike rule for input-driven tools", () => {
     const allows = { always: [] as string[], alikes: [] as { action: string; subject: string; goal?: string }[] };
-    addAllow(allows, "memory_aim_memory_store", "{}");
-    addAllow(allows, "shell", "mv a.ts lib/", "move helpers");
-    addAllow(allows, "shell", "mv a.ts lib/", "move helpers");
+    addAllow(allows, DEFAULT_ALIKE_TOOLS, "memory_aim_memory_store", "{}");
+    addAllow(allows, DEFAULT_ALIKE_TOOLS, "shell", "mv a.ts lib/", "move helpers");
+    addAllow(allows, DEFAULT_ALIKE_TOOLS, "shell", "mv a.ts lib/", "move helpers");
     expect(allows.always).toEqual(["memory_aim_memory_store"]);
     expect(allows.alikes).toEqual([{ action: "shell", subject: "mv a.ts lib/", goal: "move helpers" }]);
-    removeAllow(allows, "memory_aim_memory_store", "{\"other\":1}");
-    removeAllow(allows, "shell", "mv a.ts lib/");
+    removeAllow(allows, DEFAULT_ALIKE_TOOLS, "memory_aim_memory_store", "{\"other\":1}");
+    removeAllow(allows, DEFAULT_ALIKE_TOOLS, "shell", "mv a.ts lib/");
     expect(allows).toEqual({ always: [], alikes: [] });
   });
 });
@@ -264,10 +264,12 @@ describe("reviewer parsing", () => {
     expect(parseDecision("maybe").decision).toBe("ask");
   });
   test("alike defaults to not alike", () => {
-    expect(parseAlike("ALIKE")).toBe(true);
-    expect(parseAlike("alike.")).toBe(true);
-    expect(parseAlike("NOT")).toBe(false);
-    expect(parseAlike("not alike")).toBe(false);
+    expect(parseAlike("ALIKE 2", 3)).toBe(1);
+    expect(parseAlike("**ALIKE** 1", 1)).toBe(0);
+    expect(parseAlike("alike.", 2)).toBe(0);
+    expect(parseAlike("ALIKE 4", 3)).toBeUndefined();
+    expect(parseAlike("NOT", 2)).toBeUndefined();
+    expect(parseAlike("not alike", 2)).toBeUndefined();
   });
   test("alike question carries the allowed calls and their goal", () => {
     const question = alikePrompt(
@@ -277,15 +279,23 @@ describe("reviewer parsing", () => {
     expect(question).toContain("mv src/a.ts lib/a.ts");
     expect(question).toContain("move the helpers to lib/");
     expect(question.indexOf("mv src/a.ts")).toBeLessThan(question.indexOf("PENDING ACTION"));
-    expect(question.trim().endsWith("ALIKE or NOT.")).toBe(true);
+    expect(question).toContain('"ALIKE <number');
   });
 });
 
 describe("always allow", () => {
-  test("input-driven tools never get a whole-tool allow", () => {
-    for (const tool of ["shell", "execute", "webfetch", "read", "grep", "glob"]) expect(NO_ALWAYS.has(tool)).toBe(true);
-    expect(NO_ALWAYS.has("edit")).toBe(false);
-    expect(NO_ALWAYS.has("memory_aim_memory_store")).toBe(false);
+  test("input-driven tools are alike tools by default", () => {
+    for (const tool of ["shell", "execute", "webfetch", "read", "grep", "glob"]) expect(isAlikeTool(tool, DEFAULT_ALIKE_TOOLS)).toBe(true);
+    expect(isAlikeTool("edit", DEFAULT_ALIKE_TOOLS)).toBe(false);
+    expect(isAlikeTool("memory_aim_memory_store", DEFAULT_ALIKE_TOOLS)).toBe(false);
+  });
+  test("alikeTools option: default, wildcards, and an empty list", () => {
+    expect(parseOptions({}).alikeTools).toEqual([...DEFAULT_ALIKE_TOOLS]);
+    const custom = parseOptions({ alikeTools: ["shell", "github_*", 3] }).alikeTools;
+    expect(custom).toEqual(["shell", "github_*"]);
+    expect(isAlikeTool("github_create_issue", custom)).toBe(true);
+    expect(isAlikeTool("read", custom)).toBe(false);
+    expect(parseOptions({ alikeTools: [] }).alikeTools).toEqual([]);
   });
 });
 

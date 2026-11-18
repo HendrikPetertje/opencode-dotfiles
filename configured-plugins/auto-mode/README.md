@@ -39,8 +39,9 @@ For each permission check, in this order:
    session only:
    - **allow tool**: for MCP and other ordinary tools, every call to that tool
      is allowed, whatever its input.
-   - **allow alike**: for `shell`, `execute`, `webfetch`, `read`, `grep` and
-     `glob`, where the input is everything, the reviewer compares later calls
+   - **allow alike**: for the tools in the `alikeTools` option (default
+     `shell`, `execute`, `webfetch`, `read`, `grep` and `glob`, where the
+     input is everything), the reviewer compares later calls
      with the one you allowed (and what you were asking for then), judging a
      command chain as a whole. Alike calls are allowed; anything else gets the
      normal review. Skipped while on guard.
@@ -131,16 +132,18 @@ In the modal:
 |---|---|
 | `j` `k` `g` `G` | scroll |
 | `h` / `l` | toggle mode: what happens to this command for the rest of the session (deny · check · allow) |
+| `a` | filter: only the calls you set allow on (newest per command), hiding the calls they allowed later; press again for all |
+| `o` | jump to the call whose allow covered the selected one |
 | `c` | settings (and back) |
 | `y` | file yolo on/off |
 | `-` | auto mode on/off |
 | `esc` | close |
 
 "Allow" shows as **allow tool** or **allow alike**, depending on the tool (see
-above). The line under the modes says which. **Allowed this session**, under
-the selected call, lists everything allowed so far: whole tools, and alike
-rules with the call and your request at that time. To undo one, set its call
-back to check or deny.
+above). The line under the modes says which. Press `a` to see only the calls
+you allowed. A call that was allowed because of one of them shows **allowed
+by: …** under its command; press `o` or click it to jump to that call. To undo
+an allow, set its call back to check or deny.
 
 In settings, move with `j` / `k`; `space`, `enter` or a click toggles a setting, opens the model picker or runs the action; `h` / `l` change values:
 
@@ -170,10 +173,21 @@ Settings are remembered per project; on/off and yolo are remembered everywhere.
 | `review` | `"all"` | `"prompts"` to only review what would otherwise ask you |
 | `log` | `true` | write decisions to `~/.local/state/opencode-auto-mode/decisions.jsonl` (latest 1000 kept; **Open log folder** in settings opens it) |
 | `keybind` | `"<leader>d"` | opens the modal |
+| `alikeTools` | `["shell", "execute", "webfetch", "read", "grep", "glob"]` | tools where "allow" means **allow alike** (reviewer-checked) instead of the whole tool. Wildcards work (`"github_*"`); `[]` makes every allow a whole-tool allow |
 | `policy` | built in | `{ "trusted": [], "blocks": [], "exceptions": [] }` replaces the reviewer's rules |
 
 The `includeAgentsMd`, `includeMemory`, `messages` and `review` options set the
 defaults; the settings view changes them per project.
+
+## Troubleshooting
+
+- **"auto-mode hit an error, so you decide"**: a check crashed and was handed to
+  you, as designed. The cause is in `plugin.log`.
+- **After editing the plugin's files**, OpenCode reloads it while it runs. That
+  can mix old and new code for a moment (errors, stale sidebar); restart
+  OpenCode if anything looks off.
+- **"Always allow" didn't stick**: press `a` in the modal to list your allows.
+  If it's empty, the reply wasn't stored; `plugin.log` shows why.
 
 ## Files
 

@@ -33,7 +33,7 @@ model-less copy next to the configured one.
 | `src/tiers.ts` | Instant classification: `allow` (read-only tools/commands, subagent starts, yolo in-project edits, reads outside the project), `deny` (catastrophic regexes), `review` (everything else). `sensitivePath`: any dot segment (`.env`, `.aws/`, `.config/`) or secret file name; a shell segment, `read` resource or yolo edit that mentions one is never instant (also inside `--flag=` and `VAR=` values). `grep`/`glob` tools stay instant: their resource is the pattern, not the searched path. `EDIT_ACTIONS`. | `shell.ts` |
 | `src/shell.ts` | Quote-aware split of a shell command into segments; flags substitution/eval (`dynamic`) and file redirects (`writes`). Not a real parser: it only has to be conservative. | - |
 | `src/config-rules.ts` | Reads `permissions` from all OpenCode config files in precedence order (global, ancestors' `opencode.json(c)`, ancestors' `.opencode/`), plus `agents.<agent>.permissions`. `userDecides` = the user wrote a rule for this specific tool/command -> leave OpenCode's decision alone. | `jsonc.ts`, `paths.ts`, `wildcard.ts` |
-| `src/overrides.ts` | Per-session user choices: `deny` / `check` / `allow` (modal row modes; "always" on a prompt = `allow`). `exactKey(action, subject)` identifies a call. `addAllow` / `removeAllow`: `allow` puts the tool in `always`, or for `NO_ALWAYS` tools (`shell`, `execute`, `webfetch`, `read`, `grep`, `glob`) an `AlikeEntry` the reviewer checks. | - |
+| `src/overrides.ts` | Per-session user choices: `deny` / `check` / `allow` (modal row modes; "always" on a prompt = `allow`). `exactKey(action, subject)` identifies a call. `addAllow` / `removeAllow`: `allow` puts the tool in `always`, or for tools matching the `alikeTools` option (`isAlikeTool`, wildcards; `DEFAULT_ALIKE_TOOLS` = `shell`, `execute`, `webfetch`, `read`, `grep`, `glob`) an `AlikeEntry` the reviewer checks. The list reaches the TUI in the `state` payload. | `wildcard.ts` |
 | `src/transcript.ts` | Builds the reviewer's view of the session: last N user messages and every tool call since, **without** assistant text or tool output. `findToolCommand` recovers the full shell command by tool-call ID; `findToolCall` recovers the input behind a catch-all `*` permission (MCP tools), so the subject is the real input, or `inside execute: <code>` for Code Mode calls. | - |
 | `src/documents.ts` | Collects global/project `AGENTS.md`, global/project memory (`.aim/<memoryFile>` JSONL rendered as lines) and `AUTO_MODE_INSTRUCTIONS.md` (global config dir, then nearest `.opencode/`). Instructions are always included; the rest follows `ProjectSettings`. | `paths.ts`, `settings.ts` |
 | `src/reviewer.ts` | Prompt building (`systemPrompt` = fixed, cacheable; `questionPrompt` = per call), default policy (trusted / blocks / exceptions, overridable via `options.policy`), answer parsing. | `documents.ts`, `options.ts` (types) |
@@ -61,12 +61,12 @@ The order below matters:
 3. **Off** -> record `off`, leave the effect alone.
 4. **User config rule for this specific tool/command** (`userDecides`) -> leave the effect alone.
 5. **Session override** exact match: deny / allow. `check` (no override) runs the rest.
-6. **Always**: the tool is in the session's `always` list (`allow` on a non-`NO_ALWAYS` tool) -> allow.
+6. **Always**: the tool is in the session's `always` list (`allow` on a non-`alikeTools` tool) -> allow.
 7. **Tiers** (`classify`): catastrophic -> deny, read-only/yolo -> allow.
 8. Review scope `prompts` and OpenCode would allow -> leave it.
 9. **Cache**: the reviewer allowed this exact subject earlier in the session -> allow. Skipped while on guard.
 10. **Refused stays refused**: same subject denied by the reviewer and no new user message since -> deny.
-11. **Reviewer alike**: the session's `alikes` for this tool (`allow` on a `NO_ALWAYS` tool, with the user's message at that time as the goal). One-word `alikePrompt` question: `ALIKE` -> allow, anything else -> on to review. Skipped while on guard.
+11. **Reviewer alike**: the session's `alikes` for this tool (`allow` on a `alikeTools` tool, with the user's message at that time as the goal). One-word `alikePrompt` question: `ALIKE` -> allow, anything else -> on to review. Skipped while on guard.
 12. **Review**: triage question (one word). `ALLOW` -> allow. Otherwise the reasoning question -> allow / deny / ask. No answer -> ask.
     While on guard the triage is skipped, every review uses up one guarded call, and `ReviewRequest.recentDenials` puts the last denials before the pending action.
 
@@ -134,7 +134,8 @@ all copies in the process. Create any new mutable state there too, and mutate
 
 - The TUI calls `state({ sessionID, directory })` and gets everything it renders
   (settings, `rows`, model, keybind, the root session's records with their
-  current `override`).
+  current `override` from `modeFor`, `allowed` = the session's `always` tools
+  and `alikes`, and the `alikeTools` option).
 - Mutations (`setGlobal`, `setSetting`, `setOverride`) return a fresh `state` payload.
 - After any change the server emits `changed`; the TUI re-fetches every
   session state it holds, plus the session on screen. Records are not streamed one by one.
@@ -144,6 +145,12 @@ all copies in the process. Create any new mutable state there too, and mutate
 - The TUI caches payloads in `context.storage.memory("auto-mode")` keyed by
   session ID (`"home"` without one), plus a spinner frame and a count of
   mounted sidebars. `FooterIcon` renders only when no sidebar is mounted.
+- `AskReason` (slot `session.composer.top`): OpenCode's permission prompt does
+  not show a request's `message`, so this reads pending requests for the
+  session family (`context.data.session.permission.list`) and shows those whose
+  message starts with `auto-mode` in a gold-bordered block on a `surface` background.
+- The TUI logs RPC failures to `plugin.log` (`tui …`), except `rpc.unavailable`
+  while the server is still starting.
 
 ## Patterns to keep
 
@@ -167,8 +174,24 @@ all copies in the process. Create any new mutable state there too, and mutate
   `space`, `enter` and mouse clicks: toggle, model picker, or the row's action.
   `enter` returns `false` outside the settings view so OpenCode keeps it.
   `h`/`l` (`sideways`) only change values and skip picker/action rows.
+- **Survive hot reloads.** Editing any plugin file reloads it in the running
+  server, and the reload can pair a new `index.ts` with an older copy of a
+  `src/*` module. Give every new option or state field a fallback where
+  `index.ts` reads it (see `alikeTools`, `state.always ??= []`), and keep shared
+  state on `globalThis.__opencodeAutoMode`. Restart OpenCode after larger changes.
+- **Don't shadow Solid imports** in components: the sidebar's local `on()` once
+  hid `on` from `solid-js` (now imported as `track`) and crashed the slot.
 - **Modal keys:** `j k g G ctrl+d ctrl+u` scroll, `h l` change the selected
-  call's mode (decisions) or value (settings), `c` settings, `y` yolo, `-` on/off.
+  call's mode (decisions) or value (settings), `a` allowed-only filter, `o` open the origin of an allow, `c` settings, `y` yolo, `-` on/off.
+- **Allow origin.** The row an allow is set on (modal or "always" on a prompt)
+  keeps an exact `allow` override; `state` sends it as `allowOrigin`. The `a`
+  filter shows only those rows, newest per command. Rows merely covered by a
+  whole-tool allow show `allow` via `modeFor` but are not origins. Removing a
+  whole-tool allow clears every marker of that tool (`clearToolAllows`).
+- **Allowed by.** A record allowed by a whole-tool allow or an alike rule gets
+  `allowedBy` (action + subject of the origin call). The alike question asks for
+  `ALIKE <n>` so `parseAlike` knows which entry matched. The modal shows it
+  under the command; `o` or a click selects the newest row with that command.
 
 ## Testing
 
@@ -191,6 +214,10 @@ throwaway container (solid-js **1.9**, not 2.x) and run `tsc` with
   approval for the project, but auto mode overrides `event.effect`, so that never skips review.
 - `shell.ts` is a heuristic splitter. When unsure it must mark a command
   `dynamic` or `writes` so it goes to review.
+- A TUI hot reload leaves the old copy's `changed` listener behind, so each
+  update is handled once per reload until the TUI restarts. Harmless, just extra work.
+- An `execute` (Code Mode) call is reviewed as one action: its subject is
+  `inside execute: <code>`, not each inner tool call.
 
 ## Subagents
 

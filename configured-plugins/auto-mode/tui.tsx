@@ -12,7 +12,7 @@ import { homedir } from "node:os";
 import { stateDir } from "./src/paths.ts";
 import { logError } from "./src/log.ts";
 import { cachedShare, emptyCost, formatUsd, type CostTotal } from "./src/cost.ts";
-import { cycle, NO_ALWAYS, OVERRIDES, type AlikeEntry, type Override } from "./src/overrides.ts";
+import { cycle, DEFAULT_ALIKE_TOOLS, isAlikeTool, OVERRIDES, type AlikeEntry, type Override } from "./src/overrides.ts";
 import { shorten, type CallRecord } from "./src/records.ts";
 import { AutoMode } from "./src/rpc.ts";
 import type { ProjectSettings, SettingRow } from "./src/settings.ts";
@@ -26,9 +26,11 @@ interface Payload {
   model: string | null;
   keybind: string;
   rootID: string;
-  records: (CallRecord & { override: Override })[];
+  records: (CallRecord & { override: Override; allowOrigin?: boolean })[];
   /** What "allow" (modal) and "always allow" (prompt) allowed this session. */
   allowed?: { tools: string[]; alikes: AlikeEntry[] };
+  /** The `alikeTools` option: where "allow" means "allow alike". */
+  alikeTools?: string[];
   cost: CostTotal;
   /** Guarded reviews left after a deny; 0 when not on guard. */
   guard: number;
@@ -105,10 +107,10 @@ const OVERRIDE_STYLE: Record<Override, { label: string; color: unknown }> = {
 };
 
 /** "allow" means the whole tool, or alike calls for tools whose input is everything. */
-const overrideLabel = (value: Override, action: string) =>
-  value === "allow" ? (NO_ALWAYS.has(action) ? "allow alike" : "allow tool") : OVERRIDE_STYLE[value].label;
-const allowHint = (action: string) =>
-  NO_ALWAYS.has(action)
+const overrideLabel = (value: Override, action: string, alikeTools: readonly string[]) =>
+  value === "allow" ? (isAlikeTool(action, alikeTools) ? "allow alike" : "allow tool") : OVERRIDE_STYLE[value].label;
+const allowHint = (action: string, alikeTools: readonly string[]) =>
+  isAlikeTool(action, alikeTools)
     ? "allow alike: the reviewer allows later calls with the same kind of goal, this session"
     : `allow tool: every ${action} call is allowed, whatever its input, this session`;
 
@@ -243,8 +245,28 @@ export default Plugin.define({
     const Modal = (props: { sessionID: string | undefined; recordID?: string; view?: "decisions" | "settings" }) => {
       const ctx = usePlugin();
       const state = () => store.states[key(props.sessionID)];
-      const list = () => visible(state());
+      const [allowedOnly, setAllowedOnly] = createSignal(false);
+      /** With the filter on: only the calls you set allow on (newest per command), not the calls they covered later. */
+      const list = () => {
+        const all = visible(state());
+        if (!allowedOnly()) return all;
+        const seen = new Set<string>();
+        return all.filter((record) => {
+          const id = `${record.action}\u0000${record.subject}`;
+          if (!record.allowOrigin || record.override !== "allow" || seen.has(id)) return false;
+          seen.add(id);
+          return true;
+        });
+      };
       const [view, setView] = createSignal<"decisions" | "settings">(props.view ?? "decisions");
+      /** Selects the call an allow came from: the newest row with that exact command. */
+      const jumpTo = (origin: { action: string; subject: string }) => {
+        setAllowedOnly(false);
+        const index = list().findIndex((r) => r.action === origin.action && r.subject === origin.subject);
+        if (index === -1) return;
+        setSelected(index);
+        scroll?.scrollTo(Math.max(0, index - 8));
+      };
       const initial = Math.max(0, list().findIndex((r) => r.id === props.recordID));
       const [selected, setSelected] = createSignal(initial);
       const [row, setRow] = createSignal(0);
@@ -300,46 +322,31 @@ export default Plugin.define({
           { bind: "return", run: () => (view() === "settings" ? activate(row()) : false) },
           { bind: "c", run: () => setView((v) => (v === "settings" ? "decisions" : "settings")) },
           { bind: "y", run: toggleYolo },
+          {
+            bind: "o",
+            run: () => {
+              const origin = view() === "decisions" ? selectedRecord()?.allowedBy : undefined;
+              if (!origin) return false;
+              jumpTo(origin);
+            },
+          },
+          {
+            bind: "a",
+            run: () => {
+              if (view() !== "decisions") return false;
+              setAllowedOnly((on) => !on);
+              setSelected(0);
+              scroll?.scrollTo(0);
+            },
+          },
           { bind: "-", run: toggleEnabled },
         ],
       }));
 
       const on = () => state()?.enabled ?? false;
       const dim = (color: unknown) => (on() ? color : COLOR.muted);
+      const alikeTools = () => state()?.alikeTools ?? DEFAULT_ALIKE_TOOLS;
 
-      /** Everything "allow" / "always allow" allowed this session. Undo: set the call's row back to check. */
-      const Allowed = () => {
-        const tools = () => state()?.allowed?.tools ?? [];
-        const alikes = () => state()?.allowed?.alikes ?? [];
-        const flat = (text: string, max: number) => {
-          const line = text.replace(/\s+/g, " ").trim();
-          return line.length > max ? `${line.slice(0, max - 1)}…` : line;
-        };
-        return (
-          <box flexDirection="column" flexShrink={0} marginTop={1}>
-            <text fg={COLOR.foam as any} attributes={TextAttributes.BOLD}>
-              Allowed this session
-            </text>
-            {tools().length === 0 && alikes().length === 0 && <text fg={COLOR.muted as any}>Nothing yet.</text>}
-            {tools().map((tool) => (
-              <box flexDirection="row" flexShrink={0} gap={2}>
-                <text fg={ctx.theme.text.base as any}>{tool}</text>
-                <text fg={COLOR.muted as any}>every call</text>
-              </box>
-            ))}
-            {alikes().map((entry) => (
-              <box flexDirection="column" flexShrink={0}>
-                <box flexDirection="row" flexShrink={0} gap={1}>
-                  <text fg={ctx.theme.text.base as any}>{entry.action}</text>
-                  <text fg={COLOR.muted as any}>alike to</text>
-                  <text fg={ctx.theme.text.base as any}>{flat(entry.subject, 60)}</text>
-                </box>
-                {entry.goal && <text fg={COLOR.muted as any}>{`  for: ${flat(entry.goal, 70)}`}</text>}
-              </box>
-            ))}
-          </box>
-        );
-      };
 
       const Decisions = () => (
         <box flexDirection="row" flexGrow={1} flexBasis={0} minHeight={0} gap={2}>
@@ -361,21 +368,41 @@ export default Plugin.define({
                 </box>
               );
             })}
-            {list().length === 0 && <text fg={COLOR.muted as any}>No tool calls in this session yet.</text>}
+            {allowedOnly() && (
+              <text fg={COLOR.foam as any} attributes={TextAttributes.BOLD}>
+                Allowed calls only (a)
+              </text>
+            )}
+            {list().length === 0 && (
+              <text fg={COLOR.muted as any}>
+                {allowedOnly() ? "Nothing allowed this session." : "No tool calls in this session yet."}
+              </text>
+            )}
           </scrollbox>
           <box flexDirection="column" flexGrow={1} minHeight={0}>
             {selectedRecord() ? (
               <>
-                <text fg={dim(statusGlyph(selectedRecord()!, store.frame).color) as any} attributes={TextAttributes.BOLD}>
+                <text
+                  flexShrink={0}
+                  wrapMode="word"
+                  fg={dim(statusGlyph(selectedRecord()!, store.frame).color) as any}
+                  attributes={TextAttributes.BOLD}
+                >
                   {selectedRecord()!.status === "reviewing" ? "Reviewing…" : selectedRecord()!.reason || selectedRecord()!.status}
                 </text>
-                <text fg={COLOR.muted as any}>
+                <text flexShrink={0} fg={COLOR.muted as any}>
                   {`${selectedRecord()!.action} · ${selectedRecord()!.status} · ${selectedRecord()!.source} · ${new Date(selectedRecord()!.at).toLocaleTimeString()}`}
                 </text>
                 <box height={1} flexShrink={0} />
                 <scrollbox flexGrow={1} flexBasis={0} minHeight={0}>
                   <text fg={ctx.theme.text.base as any}>{selectedRecord()!.subject}</text>
                 </scrollbox>
+                <box height={1} flexShrink={0} border={["top"]} borderColor={COLOR.muted as any} marginTop={1} />
+                {selectedRecord()!.allowedBy && (
+                  <text flexShrink={0} fg={COLOR.foam as any} onMouseUp={() => jumpTo(selectedRecord()!.allowedBy!)}>
+                    {`${ICON.shield} allowed by: ${shorten(selectedRecord()!.allowedBy!, 50)}  (o / click to open)`}
+                  </text>
+                )}
                 <box flexDirection="row" flexShrink={0} gap={1}>
                   <text fg={COLOR.muted as any}>From now on:</text>
                   {OVERRIDES.map((value) => (
@@ -385,17 +412,16 @@ export default Plugin.define({
                       onMouseUp={() => void call("setOverride", props.sessionID, { recordID: selectedRecord()!.id, value })}
                     >
                       {selectedRecord()!.override === value
-                        ? `[${overrideLabel(value, selectedRecord()!.action)}]`
-                        : ` ${overrideLabel(value, selectedRecord()!.action)} `}
+                        ? `[${overrideLabel(value, selectedRecord()!.action, alikeTools())}]`
+                        : ` ${overrideLabel(value, selectedRecord()!.action, alikeTools())} `}
                     </text>
                   ))}
                 </box>
-                <text fg={COLOR.muted as any}>{allowHint(selectedRecord()!.action)}</text>
+                <text flexShrink={0} fg={COLOR.muted as any}>{allowHint(selectedRecord()!.action, alikeTools())}</text>
               </>
             ) : (
               <text fg={COLOR.muted as any}>Nothing selected.</text>
             )}
-            <Allowed />
           </box>
         </box>
       );
@@ -455,13 +481,24 @@ export default Plugin.define({
           </box>
           <box height={1} flexShrink={0} border={["top"]} borderColor={COLOR.muted as any} />
           {view() === "settings" ? <Settings /> : <Decisions />}
-          <box flexDirection="row" flexShrink={0} justifyContent="space-between">
-            <text fg={COLOR.muted as any}>
-              {view() === "settings"
-                ? "esc close · j/k/g/G scroll · space/enter/click select · h/l change"
-                : "esc close · j/k/g/G scroll · h/l toggle mode"}
-            </text>
-            <box flexDirection="row" gap={2}>
+          <box height={1} flexShrink={0} border={["top"]} borderColor={COLOR.muted as any} marginTop={1} />
+          <text flexShrink={0} wrapMode="word" fg={COLOR.muted as any}>
+            {view() === "settings"
+              ? "esc close · j/k/g/G scroll · space/enter/click select · h/l change"
+              : "esc close · j/k/g/G scroll · h/l toggle mode · a allowed only · o open origin"}
+          </text>
+          <box flexDirection="row" flexShrink={0} justifyContent="flex-end">
+            <box flexDirection="row" flexShrink={0} gap={2}>
+              <text
+                fg={(allowedOnly() ? COLOR.foam : COLOR.muted) as any}
+                onMouseUp={() => {
+                  setView("decisions");
+                  setAllowedOnly((on) => !on);
+                  setSelected(0);
+                }}
+              >
+                {`${ICON.shield} allowed (a)`}
+              </text>
               <text fg={(view() === "settings" ? COLOR.iris : COLOR.muted) as any} onMouseUp={() => setView((v) => (v === "settings" ? "decisions" : "settings"))}>
                 {`${ICON.gear} config (c)`}
               </text>

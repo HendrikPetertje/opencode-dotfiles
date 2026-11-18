@@ -1,3 +1,5 @@
+import { DEFAULT_ALIKE_TOOLS } from "./overrides.ts";
+
 export interface ScopeToggle {
   global: boolean;
   project: boolean;
@@ -24,6 +26,8 @@ export interface Options {
   log: boolean;
   keybind: string;
   policy: PolicyOptions;
+  /** Tools where "allow" means "allow alike" (reviewer-checked) instead of the whole tool. */
+  alikeTools: string[];
 }
 
 function toggle(value: unknown): ScopeToggle {
@@ -66,6 +70,9 @@ export function parseOptions(raw: Record<string, unknown> | undefined): Options 
     review: options.review === "prompts" ? "prompts" : "all",
     log: options.log !== false,
     keybind: typeof options.keybind === "string" && options.keybind.trim() ? options.keybind.trim() : "<leader>d",
+    alikeTools: Array.isArray(options.alikeTools)
+      ? options.alikeTools.filter((tool): tool is string => typeof tool === "string" && tool.trim() !== "").map((tool) => tool.trim())
+      : [...DEFAULT_ALIKE_TOOLS],
     policy: { trusted: strings(policy.trusted), blocks: strings(policy.blocks), exceptions: strings(policy.exceptions) },
   };
 }
