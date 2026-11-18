@@ -4,7 +4,7 @@ import { userDecides, type Rule } from "./config-rules.ts";
 import { parseJsonc } from "./jsonc.ts";
 import { parseModel, parseOptions } from "./options.ts";
 import { alikePrompt, parseAlike, parseDecision, parseTriage } from "./reviewer.ts";
-import { adjust, projectDefaults } from "./settings.ts";
+import { adjust, effectiveSettings, projectDefaults, SETTING_ROWS, visibleRows } from "./settings.ts";
 import { scanShell } from "./shell.ts";
 import { classify } from "./tiers.ts";
 import { buildTranscript, findToolCall, findToolCommand, latestUserText } from "./transcript.ts";
@@ -332,5 +332,25 @@ describe("transcript", () => {
       JSON.stringify({ type: "relation", from: "peter", to: "x", relationType: "develops" }),
     ].join("\n");
     expect(renderMemory(jsonl)).toBe("- peter [person]: likes podman\n- peter --develops--> x");
+  });
+});
+
+describe("memory plugin", () => {
+  test("memory option: auto by default, booleans force it", () => {
+    expect(parseOptions({}).memory).toBe("auto");
+    expect(parseOptions({ memory: false }).memory).toBe(false);
+    expect(parseOptions({ memory: true }).memory).toBe(true);
+    expect(parseOptions({ memory: "yes" }).memory).toBe("auto");
+  });
+  test("without the memory plugin the rows are hidden and memory is never read", () => {
+    const keys = (memory: boolean) => visibleRows(SETTING_ROWS, memory).map((row) => row.key);
+    expect(keys(true)).toContain("globalMemory");
+    expect(keys(false)).not.toContain("globalMemory");
+    expect(keys(false)).not.toContain("projectMemory");
+    expect(keys(false)).toContain("messages");
+    const settings = projectDefaults(parseOptions({}));
+    expect(settings.globalMemory).toBe(true);
+    expect(effectiveSettings(settings, false)).toMatchObject({ globalMemory: false, projectMemory: false });
+    expect(effectiveSettings(settings, true)).toBe(settings);
   });
 });

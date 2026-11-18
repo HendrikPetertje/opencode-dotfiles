@@ -26,6 +26,8 @@ export interface Options {
   log: boolean;
   keybind: string;
   policy: PolicyOptions;
+  /** Use the `.aim` memory: `"auto"` only when the memory plugin's tools are registered. */
+  memory: "auto" | boolean;
   /** Tools where "allow" means "allow alike" (reviewer-checked) instead of the whole tool. */
   alikeTools: string[];
 }
@@ -70,6 +72,7 @@ export function parseOptions(raw: Record<string, unknown> | undefined): Options 
     review: options.review === "prompts" ? "prompts" : "all",
     log: options.log !== false,
     keybind: typeof options.keybind === "string" && options.keybind.trim() ? options.keybind.trim() : "<leader>d",
+    memory: typeof options.memory === "boolean" ? options.memory : "auto",
     alikeTools: Array.isArray(options.alikeTools)
       ? options.alikeTools.filter((tool): tool is string => typeof tool === "string" && tool.trim() !== "").map((tool) => tool.trim())
       : [...DEFAULT_ALIKE_TOOLS],

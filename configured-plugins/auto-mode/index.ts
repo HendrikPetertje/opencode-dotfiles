@@ -36,7 +36,9 @@ import {
   adjust,
   globalDefaults,
   projectDefaults,
+  effectiveSettings,
   SETTING_ROWS,
+  visibleRows,
   type GlobalSettings,
   type ProjectSettings,
   type SettingKey,
@@ -50,6 +52,10 @@ const REVIEW_ATTEMPTS = 2;
 const MAX_CONSECUTIVE_DENIALS = 3;
 const MAX_TOTAL_DENIALS = 20;
 const MAX_RECORDS = 300;
+/** Tools of the memory plugin's MCP server (`memory_aim_memory_read_all`, ...). */
+const MEMORY_TOOL = /(^|_)aim_memory_/;
+/** MCP servers can come and go; re-check the tool list at most this often. */
+const MEMORY_CHECK_MS = 30_000;
 const NO_MODEL = "no reviewer model: pick one in auto mode settings, or set \"model\" in the plugin options";
 
 /** Drops modes that no longer exist (the old pattern-based "alike"). */
@@ -118,7 +124,11 @@ export default Plugin.define({
   async setup(ctx) {
     const parsed = parseOptions(ctx.options as Record<string, unknown>);
     // A hot reload can pair this file with an older options.ts that predates `alikeTools`.
-    const options = { ...parsed, alikeTools: Array.isArray(parsed.alikeTools) ? parsed.alikeTools : [...DEFAULT_ALIKE_TOOLS] };
+    const options = {
+      ...parsed,
+      alikeTools: Array.isArray(parsed.alikeTools) ? parsed.alikeTools : [...DEFAULT_ALIKE_TOOLS],
+      memory: parsed.memory ?? ("auto" as const),
+    };
     const policy = policyFrom(options.policy);
     /** The project's picked reviewer, else the `model` option. */
     const reviewerFor = (settings: ProjectSettings) => parseModel(settings.model) ?? options.model;
@@ -312,6 +322,25 @@ export default Plugin.define({
 
     // ---------------------------------------------------------------- RPC
 
+    // ---------------------------------------------------------------- memory plugin
+
+    // The `.aim` memory belongs to a separate plugin (memory MCP). Without it, auto mode
+    // neither reads memory nor shows its settings, so the plugin works on its own.
+    let memoryCheck: { at: number; value: Promise<boolean> } | undefined;
+    const memoryAvailable = (): Promise<boolean> => {
+      if (options.memory !== "auto") return Promise.resolve(options.memory === true);
+      if (memoryCheck && Date.now() - memoryCheck.at < MEMORY_CHECK_MS) return memoryCheck.value;
+      const value = ctx.tool
+        .list()
+        .then((tools: readonly { id: string }[]) => tools.some((tool) => MEMORY_TOOL.test(tool.id)))
+        .catch((error: unknown) => {
+          logError("memory plugin check", error);
+          return false;
+        });
+      memoryCheck = { at: Date.now(), value };
+      return value;
+    };
+
     const statePayload = async (input: { sessionID?: string; directory?: string }) => {
       const info = input.sessionID
         ? await sessionInfo(input.sessionID)
@@ -329,7 +358,7 @@ export default Plugin.define({
         enabled: global.enabled,
         yoloEdits: global.yoloEdits,
         settings: proj.settings,
-        rows: SETTING_ROWS,
+        rows: visibleRows(SETTING_ROWS, await memoryAvailable()),
         problem: reviewerFor(proj.settings) ? null : NO_MODEL,
         model: (() => {
           const model = reviewerFor(proj.settings);
@@ -370,7 +399,7 @@ export default Plugin.define({
           : { projectKey: `dir:${input?.directory ?? ctx.location?.directory}` };
         const proj = await project(info.projectKey);
         const key = input?.key as SettingKey;
-        if (SETTING_ROWS.some((row) => row.key === key)) {
+        if (visibleRows(SETTING_ROWS, await memoryAvailable()).some((row) => row.key === key)) {
           if (key === "model") {
             if (typeof input?.value === "string" && parseModel(input.value)) proj.settings = { ...proj.settings, model: input.value };
           } else {
@@ -561,7 +590,7 @@ export default Plugin.define({
         : undefined;
       const docs = collectDocuments({
         directory: info.directory,
-        settings,
+        settings: effectiveSettings(settings, await memoryAvailable()),
         memoryDir: options.memoryDir,
         memoryFile: options.memoryFile,
       });
@@ -625,7 +654,7 @@ export default Plugin.define({
       emit(record.rootID);
       const docs = collectDocuments({
         directory: info.directory,
-        settings,
+        settings: effectiveSettings(settings, await memoryAvailable()),
         memoryDir: options.memoryDir,
         memoryFile: options.memoryFile,
       });

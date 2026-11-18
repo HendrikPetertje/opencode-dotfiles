@@ -121,6 +121,7 @@ Errors anywhere -> ask (fail toward the user, never toward allow).
 | Overrides (exact deny/allow per call), `always` tools and reviewer-checked `alikes` | root session (subagent sessions share their parent's) | `ctx.storage` key `session:<rootID>` |
 | Records (the UI list, max 300 per root session), cost total, vigilance guard | root session | `ctx.storage` key `records:<rootID>` = `{ list, cost, guard }`, debounced 500 ms, flushed on unload. On load, `running`/`reviewing` rows become `off` ("interrupted by a plugin reload"). Call `ensureRecords(rootID)` before touching a session's records, cost or guard. |
 | Reviewer cache, refusals, denial counts | process memory | gone on a server restart |
+| Memory plugin present (`memoryAvailable`) | per plugin copy | `ctx.tool.list()` has a tool matching `/(^\|_)aim_memory_/`, cached 30 s; the `memory` option `true`/`false` skips the check |
 | Decision log, error log | disk | `stateDir()`, outside every watched directory |
 
 The server runs one copy of the plugin per location (the home directory and each
@@ -129,6 +130,14 @@ project copy, but the TUI's RPC can land in another copy. So every in-memory map
 and `GlobalSettings` live in one object on `globalThis.__opencodeAutoMode`, shared by
 all copies in the process. Create any new mutable state there too, and mutate
 `global` in place, never reassign it.
+
+## Memory is optional
+
+The `.aim` memory comes from a separate plugin (memory MCP). Auto mode must work
+without it. Every memory read goes through `effectiveSettings(settings,
+await memoryAvailable())` before `collectDocuments`, and the settings rows go
+through `visibleRows`, so without the plugin the memory rows are hidden and
+`setSetting` ignores them. Keep any new memory feature behind the same check.
 
 ## TUI <-> server
 

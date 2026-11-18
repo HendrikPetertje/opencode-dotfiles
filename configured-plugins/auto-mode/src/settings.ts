@@ -99,3 +99,16 @@ export function adjust(settings: ProjectSettings, key: SettingKey, input: "toggl
   next[key] = input === "toggle" ? !settings[key] : input === "right";
   return next;
 }
+
+/** Settings that only exist when the memory plugin (`.aim` knowledge graph) is installed. */
+export const MEMORY_KEYS = new Set<keyof ProjectSettings>(["globalMemory", "projectMemory"]);
+
+/** Settings rows as shown: the memory rows are hidden without the memory plugin. */
+export function visibleRows<Row extends { key: string }>(rows: readonly Row[], memory: boolean): Row[] {
+  return memory ? [...rows] : rows.filter((row) => !MEMORY_KEYS.has(row.key as keyof ProjectSettings));
+}
+
+/** The settings a review uses: memory is never read without the memory plugin, whatever was saved. */
+export function effectiveSettings(settings: ProjectSettings, memory: boolean): ProjectSettings {
+  return memory ? settings : { ...settings, globalMemory: false, projectMemory: false };
+}

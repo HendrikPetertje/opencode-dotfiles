@@ -97,7 +97,8 @@ guarded reviews are left. **Reset vigilance mode** in settings ends it early.
 - Your last 10 messages and the tool calls since (never the agent's own text
   or tool output, so injected instructions can't talk it into anything)
 - The global and project `AGENTS.md`
-- Your global and project memory (`.aim` knowledge graph)
+- Your global and project memory (`.aim` knowledge graph), only when the
+  memory plugin is installed (see the `memory` option)
 - `AUTO_MODE_INSTRUCTIONS.md` from `~/.config/opencode/` and the project's
   `.opencode/`, always, after everything else. Write instructions for the
   reviewer here, for example "pushing to feature branches is fine". It's read
@@ -151,7 +152,7 @@ In settings, move with `j` / `k`; `space`, `enter` or a click toggles a setting,
 |---|---|
 | Reviewer model | `space` opens the model picker |
 | Global AGENTS.md / Project AGENTS.md | send them to the reviewer |
-| Global memory / Project memory | send them to the reviewer |
+| Global memory / Project memory | send them to the reviewer (only shown with the memory plugin) |
 | Recent messages | how many of your messages the reviewer sees (`h` / `l`) |
 | Review | `all`, or `prompts` to only review what would otherwise ask you |
 | Reset vigilance mode | shows the guarded reviews left; `space` ends it for this session |
@@ -165,7 +166,8 @@ Settings are remembered per project; on/off and yolo are remembered everywhere.
 | `model` | required | `"provider/model"`; the default reviewer. Pick another per project in settings (space on **Reviewer model**). Keep it on the same provider as your chat model: only then are reviews priced and cached. |
 | `messages` | `10` | how many of your recent messages the reviewer sees |
 | `includeAgentsMd` | `true` | `true`/`false`, or `{ "global": true, "project": false }` |
-| `includeMemory` | `true` | same shape |
+| `memory` | `"auto"` | use the `.aim` memory: `"auto"` when the memory plugin's tools (`*aim_memory_*`) are registered, `true` always, `false` never. Without it the memory settings are hidden and nothing is read, so auto mode works on its own |
+| `includeMemory` | `true` | same shape as `includeAgentsMd`; only applies when memory is in use |
 | `memoryDir` | `"~/.aim"` | global memory directory |
 | `memoryFile` | `"memory-current.jsonl"` | file name inside `.aim` directories |
 | `yoloEdits` | `true` | allow file edits inside the project without review |
