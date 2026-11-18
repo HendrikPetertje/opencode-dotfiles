@@ -8,6 +8,32 @@ so you only get asked when it matters.
 Based on the ideas in
 [mellena1/opencode-auto-mode](https://github.com/mellena1/opencode-auto-mode).
 
+## Requirements
+
+- OpenCode V2
+- A reviewer model, ideally on the same provider as your chat model (see
+  [Cost](#cost))
+- Optional: the [memory-ticker](https://github.com/<your-user>/opencode-memory-ticker)
+  plugin, so the reviewer can see your `.aim` memory
+
+## Installation
+
+Clone it (or add it as a git submodule) somewhere your OpenCode config can reach:
+
+```bash
+cd ~/.config/opencode
+git submodule add https://github.com/<your-user>/opencode-auto-mode.git configured-plugins/auto-mode
+# or, without submodules:
+git clone https://github.com/<your-user>/opencode-auto-mode.git configured-plugins/auto-mode
+```
+
+There is no build step and no npm package: OpenCode loads the TypeScript
+directly. Then configure it as described under Setup and restart OpenCode. To
+update later, run `git pull` in the plugin folder (or
+`git submodule update --remote configured-plugins/auto-mode`).
+
+To run the tests: `bun test` in the plugin folder.
+
 ## Setup
 
 Add it to `~/.config/opencode/opencode.jsonc`:
@@ -195,3 +221,7 @@ defaults; the settings view changes them per project.
 
 - `decisions.jsonl` and `plugin.log` in `~/.local/state/opencode-auto-mode/`
 - `OUTLINE.md` explains the code, for agents working on it
+
+## License
+
+MIT
