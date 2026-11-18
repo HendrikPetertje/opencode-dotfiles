@@ -1,3 +1,11 @@
 [submodule "plugins/opencode-kiro-model-loader"]
 	path = plugins/opencode-kiro-model-loader
 	url = https://github.com/HendrikPetertje/opencode-kiro-model-loader.git
+[submodule "configured-plugins/memory-ticker"]
+	path = configured-plugins/memory-ticker
+	url = https://github.com/HendrikPetertje/opencode-memory-ticker.git
+	branch = main
+[submodule "configured-plugins/auto-mode"]
+	path = configured-plugins/auto-mode
+	url = https://github.com/HendrikPetertje/opencode-auto-mode.git
+	branch = main
