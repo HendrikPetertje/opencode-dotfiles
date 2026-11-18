@@ -1,12 +1,18 @@
-import { stripAssignments, words } from "./shell.ts";
-import { wildcard } from "./wildcard.ts";
-
-/** What the user picked for a call in the modal, for the rest of the session. */
-export type Override = "deny" | "check" | "allow" | "alike";
-export const OVERRIDES: readonly Override[] = ["deny", "check", "allow", "alike"];
+/**
+ * What the user picked for a call, for the rest of the session:
+ * - `deny`: this exact call is denied
+ * - `check`: this exact call always goes to review
+ * - `allow`: the whole tool is allowed whatever its input; for `NO_ALWAYS`
+ *   tools, calls alike to this one are allowed instead (the reviewer judges)
+ *
+ * "Always allow" on OpenCode's permission prompt does the same as `allow`.
+ */
+export type Override = "deny" | "check" | "allow";
+export const OVERRIDES: readonly Override[] = ["deny", "check", "allow"];
 
 export function cycle(current: Override, step: -1 | 1): Override {
-  const index = OVERRIDES.indexOf(current) + step;
+  const from = OVERRIDES.indexOf(current);
+  const index = (from === -1 ? OVERRIDES.indexOf("check") : from) + step;
   return OVERRIDES[Math.max(0, Math.min(OVERRIDES.length - 1, index))]!;
 }
 
@@ -15,53 +21,39 @@ export function exactKey(action: string, subject: string): string {
   return `${action}\u0000${subject}`;
 }
 
-export interface AlikeRule {
+/** Tools whose input decides everything: "allow" on these becomes an alike rule the reviewer checks. */
+export const NO_ALWAYS = new Set(["shell", "execute", "webfetch", "read", "grep", "glob"]);
+
+/** An "allow" on a `NO_ALWAYS` tool: the call it was given on, and what the user was asking for then. */
+export interface AlikeEntry {
   action: string;
-  pattern: string;
+  subject: string;
+  /** The user's latest message at that moment: the goal later calls are compared against. */
+  goal?: string;
 }
 
-/**
- * The "allow alike" pattern for a call: program plus subcommand for shell
- * (`npm test --watch` -> `npm test *`), the origin for web fetches, and the
- * whole tool for everything else (MCP tools, subagents, ...).
- */
-export function alikeRule(action: string, resources: readonly string[]): AlikeRule {
-  if (action === "shell") {
-    const tokens = stripAssignments(words(resources[0] ?? ""));
-    const [program = "*", sub] = tokens;
-    const pattern = sub && /^[a-z][\w:.-]*$/.test(sub) ? `${program} ${sub} *` : `${program} *`;
-    return { action, pattern };
+/** What one session allows: whole tools, and reviewer-checked alike calls. */
+export interface SessionAllows {
+  always: string[];
+  alikes: AlikeEntry[];
+}
+
+/** Adds the rule an "allow" on this call creates. */
+export function addAllow(allows: SessionAllows, action: string, subject: string, goal?: string): void {
+  if (NO_ALWAYS.has(action)) {
+    if (!allows.alikes.some((entry) => entry.action === action && entry.subject === subject)) {
+      allows.alikes.push({ action, subject, goal });
+    }
+  } else if (!allows.always.includes(action)) {
+    allows.always.push(action);
   }
-  if (action === "webfetch") {
-    try {
-      return { action, pattern: `${new URL(resources[0] ?? "").origin}/*` };
-    } catch {}
+}
+
+/** Removes the rule an "allow" on this call created. */
+export function removeAllow(allows: SessionAllows, action: string, subject: string): void {
+  if (NO_ALWAYS.has(action)) {
+    allows.alikes = allows.alikes.filter((entry) => !(entry.action === action && entry.subject === subject));
+  } else {
+    allows.always = allows.always.filter((tool) => tool !== action);
   }
-  if (action === "edit" || action === "write" || action === "patch") {
-    const first = resources[0] ?? "";
-    const dir = first.includes("/") ? first.slice(0, first.lastIndexOf("/")) : "";
-    return { action, pattern: dir ? `${dir}/*` : "*" };
-  }
-  return { action, pattern: "*" };
-}
-
-/** `npm test *` also matches a bare `npm test`. */
-export function matchesAlike(rule: AlikeRule, action: string, resources: readonly string[]): boolean {
-  if (rule.action !== action || resources.length === 0) return false;
-  return resources.every(
-    (resource) =>
-      wildcard(resource, rule.pattern) || (rule.pattern.endsWith(" *") && resource === rule.pattern.slice(0, -2)),
-  );
-}
-
-/** Each shell segment needs its own alike rule; one `npm test *` must not cover `npm test && curl ...`. */
-export function alikeRulesFor(action: string, resources: readonly string[]): AlikeRule[] {
-  if (action !== "shell") return [alikeRule(action, resources)];
-  return resources.map((resource) => alikeRule(action, [resource]));
-}
-
-export function coveredByAlike(rules: readonly AlikeRule[], action: string, resources: readonly string[]): boolean {
-  if (resources.length === 0) return false;
-  if (action !== "shell") return rules.some((rule) => matchesAlike(rule, action, resources));
-  return resources.every((resource) => rules.some((rule) => matchesAlike(rule, action, [resource])));
 }

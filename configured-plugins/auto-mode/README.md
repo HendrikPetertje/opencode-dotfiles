@@ -33,9 +33,17 @@ For each permission check, in this order:
 1. **Off**: OpenCode's own rules apply.
 2. **Your own rules win.** If `opencode.jsonc` has a rule for that specific
    tool or command (for example `context7_*: ask`), OpenCode decides. Only what
-   falls under a catch-all `*` rule is up to auto mode. "Always allow" answers
-   to a prompt are remembered for the project.
-3. **Your choices in the modal** for this session: deny, allow, or allow alike.
+   falls under a catch-all `*` rule is up to auto mode.
+3. **Your choices for this session**: deny, check or allow on a call in the
+   modal. "Always allow" on a prompt is the same as allow. Both last for this
+   session only:
+   - **allow tool**: for MCP and other ordinary tools, every call to that tool
+     is allowed, whatever its input.
+   - **allow alike**: for `shell`, `execute`, `webfetch`, `read`, `grep` and
+     `glob`, where the input is everything, the reviewer compares later calls
+     with the one you allowed (and what you were asking for then), judging a
+     command chain as a whole. Alike calls are allowed; anything else gets the
+     normal review. Skipped while on guard.
 4. **Instant rules**: read-only tools and commands (`ls`, `rg`, `git status`,
    pipes of those) and starting a subagent are allowed; catastrophic commands
    (`sudo`, `rm -rf /`, `mkfs`) are denied; file edits inside the project are
@@ -113,6 +121,8 @@ and the total gets a `+`.
   reviewed). Click a row or "… more" to open the modal.
 - **Footer icon**: shown when the sidebar is hidden. Click it to open the modal.
   It spins while a review runs, is gold while on guard and grey when auto mode is off.
+- **Why you're asked**: when auto mode hands a call back to you, a gold block
+  above the prompt shows its reason while the permission prompt is open.
 - **`<leader>d`** or `/auto-mode` opens the modal.
 
 In the modal:
@@ -120,14 +130,17 @@ In the modal:
 | Key | Does |
 |---|---|
 | `j` `k` `g` `G` | scroll |
-| `h` / `l` | toggle mode: what happens to this command for the rest of the session (deny · check · allow · allow alike) |
+| `h` / `l` | toggle mode: what happens to this command for the rest of the session (deny · check · allow) |
 | `c` | settings (and back) |
 | `y` | file yolo on/off |
 | `-` | auto mode on/off |
 | `esc` | close |
 
-"Allow alike" allows similar calls: `npm test --watch` becomes `npm test *`,
-a web fetch allows the whole site, and an MCP tool is allowed whatever its input.
+"Allow" shows as **allow tool** or **allow alike**, depending on the tool (see
+above). The line under the modes says which. **Allowed this session**, under
+the selected call, lists everything allowed so far: whole tools, and alike
+rules with the call and your request at that time. To undo one, set its call
+back to check or deny.
 
 In settings, move with `j` / `k`; `space`, `enter` or a click toggles a setting, opens the model picker or runs the action; `h` / `l` change values:
 

@@ -57,18 +57,32 @@ export function buildTranscript(messages: readonly unknown[], count: number, ski
   return { text: lines.join("\n") || "(no user messages included)", lastUserID };
 }
 
-/** The shell command exactly as the agent wrote it, before OpenCode split it into sub-commands. */
-export function findToolCommand(messages: readonly unknown[], toolID: string | undefined): string | undefined {
+/** The text of the latest user message, trimmed and capped: the goal an "always allow" was given for. */
+export function latestUserText(messages: readonly unknown[], max = 500): string | undefined {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = asRecord(messages[i]);
+    if (message?.type === "user" && typeof message.text === "string" && message.text.trim()) {
+      return truncate(message.text.trim(), max);
+    }
+  }
+  return undefined;
+}
+
+/** The tool call with this ID: its name and input as the agent wrote them. */
+export function findToolCall(messages: readonly unknown[], toolID: string | undefined): { name: string; input: unknown } | undefined {
   if (!toolID) return undefined;
   for (let i = messages.length - 1; i >= 0; i--) {
     const message = asRecord(messages[i]);
     if (message?.type !== "assistant" || !Array.isArray(message.content)) continue;
     for (const part of message.content.map(asRecord)) {
-      if (part?.type === "tool" && part.id === toolID) {
-        const command = asRecord(toolInput(part))?.command;
-        return typeof command === "string" ? command : undefined;
-      }
+      if (part?.type === "tool" && part.id === toolID) return { name: String(part.name ?? ""), input: toolInput(part) };
     }
   }
   return undefined;
+}
+
+/** The shell command exactly as the agent wrote it, before OpenCode split it into sub-commands. */
+export function findToolCommand(messages: readonly unknown[], toolID: string | undefined): string | undefined {
+  const command = asRecord(findToolCall(messages, toolID)?.input)?.command;
+  return typeof command === "string" ? command : undefined;
 }

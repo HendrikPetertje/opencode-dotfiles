@@ -33,8 +33,8 @@ model-less copy next to the configured one.
 | `src/tiers.ts` | Instant classification: `allow` (read-only tools/commands, subagent starts, yolo in-project edits, reads outside the project), `deny` (catastrophic regexes), `review` (everything else). `sensitivePath`: any dot segment (`.env`, `.aws/`, `.config/`) or secret file name; a shell segment, `read` resource or yolo edit that mentions one is never instant (also inside `--flag=` and `VAR=` values). `grep`/`glob` tools stay instant: their resource is the pattern, not the searched path. `EDIT_ACTIONS`. | `shell.ts` |
 | `src/shell.ts` | Quote-aware split of a shell command into segments; flags substitution/eval (`dynamic`) and file redirects (`writes`). Not a real parser: it only has to be conservative. | - |
 | `src/config-rules.ts` | Reads `permissions` from all OpenCode config files in precedence order (global, ancestors' `opencode.json(c)`, ancestors' `.opencode/`), plus `agents.<agent>.permissions`. `userDecides` = the user wrote a rule for this specific tool/command -> leave OpenCode's decision alone. | `jsonc.ts`, `paths.ts`, `wildcard.ts` |
-| `src/overrides.ts` | Per-session user choices from the modal: `deny` / `check` / `allow` / `alike`. `exactKey(action, subject)` identifies a call. Alike rules (`npm test *`, URL origin, whole MCP tool) and matching; every shell segment must be covered. | `shell.ts`, `wildcard.ts` |
-| `src/transcript.ts` | Builds the reviewer's view of the session: last N user messages and every tool call since, **without** assistant text or tool output. `findToolCommand` recovers the full shell command by tool-call ID. | - |
+| `src/overrides.ts` | Per-session user choices: `deny` / `check` / `allow` (modal row modes; "always" on a prompt = `allow`). `exactKey(action, subject)` identifies a call. `addAllow` / `removeAllow`: `allow` puts the tool in `always`, or for `NO_ALWAYS` tools (`shell`, `execute`, `webfetch`, `read`, `grep`, `glob`) an `AlikeEntry` the reviewer checks. | - |
+| `src/transcript.ts` | Builds the reviewer's view of the session: last N user messages and every tool call since, **without** assistant text or tool output. `findToolCommand` recovers the full shell command by tool-call ID; `findToolCall` recovers the input behind a catch-all `*` permission (MCP tools), so the subject is the real input, or `inside execute: <code>` for Code Mode calls. | - |
 | `src/documents.ts` | Collects global/project `AGENTS.md`, global/project memory (`.aim/<memoryFile>` JSONL rendered as lines) and `AUTO_MODE_INSTRUCTIONS.md` (global config dir, then nearest `.opencode/`). Instructions are always included; the rest follows `ProjectSettings`. | `paths.ts`, `settings.ts` |
 | `src/reviewer.ts` | Prompt building (`systemPrompt` = fixed, cacheable; `questionPrompt` = per call), default policy (trusted / blocks / exceptions, overridable via `options.policy`), answer parsing. | `documents.ts`, `options.ts` (types) |
 | `src/records.ts` | `CallRecord` (one row in the UI), status/source enums, `shorten`. Shared by both halves. | `overrides.ts` (type) |
@@ -60,13 +60,14 @@ The order below matters:
    same call (shell checks `external_directory` first) gets its own record.
 3. **Off** -> record `off`, leave the effect alone.
 4. **User config rule for this specific tool/command** (`userDecides`) -> leave the effect alone.
-5. **Session override** exact match: deny / allow. `check` skips steps 6, 9 and 10.
-6. **Alike rules** (session alike + project-wide "always" approvals) -> allow.
+5. **Session override** exact match: deny / allow. `check` (no override) runs the rest.
+6. **Always**: the tool is in the session's `always` list (`allow` on a non-`NO_ALWAYS` tool) -> allow.
 7. **Tiers** (`classify`): catastrophic -> deny, read-only/yolo -> allow.
 8. Review scope `prompts` and OpenCode would allow -> leave it.
 9. **Cache**: the reviewer allowed this exact subject earlier in the session -> allow. Skipped while on guard.
 10. **Refused stays refused**: same subject denied by the reviewer and no new user message since -> deny.
-11. **Review**: triage question (one word). `ALLOW` -> allow. Otherwise the reasoning question -> allow / deny / ask. No answer -> ask.
+11. **Reviewer alike**: the session's `alikes` for this tool (`allow` on a `NO_ALWAYS` tool, with the user's message at that time as the goal). One-word `alikePrompt` question: `ALIKE` -> allow, anything else -> on to review. Skipped while on guard.
+12. **Review**: triage question (one word). `ALLOW` -> allow. Otherwise the reasoning question -> allow / deny / ask. No answer -> ask.
     While on guard the triage is skipped, every review uses up one guarded call, and `ReviewRequest.recentDenials` puts the last denials before the pending action.
 
 ### Decision rules (prompt, `src/reviewer.ts`)
@@ -116,11 +117,18 @@ Errors anywhere -> ask (fail toward the user, never toward allow).
 | State | Scope | Storage |
 |---|---|---|
 | `GlobalSettings` (on/off, yolo) | all projects | `ctx.storage` key `global` |
-| `ProjectSettings` + `approved` alike rules from "always" replies | project (`id:<projectID>`, else `dir:<path>`) | `ctx.storage` key `project:<key>` |
-| Overrides + alike rules from the modal | root session (subagent sessions share their parent's) | `ctx.storage` key `session:<rootID>` |
+| `ProjectSettings` | project (`id:<projectID>`, else `dir:<path>`) | `ctx.storage` key `project:<key>` |
+| Overrides (exact deny/allow per call), `always` tools and reviewer-checked `alikes` | root session (subagent sessions share their parent's) | `ctx.storage` key `session:<rootID>` |
 | Records (the UI list, max 300 per root session), cost total, vigilance guard | root session | `ctx.storage` key `records:<rootID>` = `{ list, cost, guard }`, debounced 500 ms, flushed on unload. On load, `running`/`reviewing` rows become `off` ("interrupted by a plugin reload"). Call `ensureRecords(rootID)` before touching a session's records, cost or guard. |
-| Reviewer cache, refusals, denial counts | process memory | reset on every plugin reload (each config save) |
+| Reviewer cache, refusals, denial counts | process memory | gone on a server restart |
 | Decision log, error log | disk | `stateDir()`, outside every watched directory |
+
+The server runs one copy of the plugin per location (the home directory and each
+project), plus a new copy on every hot reload. Hooks run in the session's
+project copy, but the TUI's RPC can land in another copy. So every in-memory map
+and `GlobalSettings` live in one object on `globalThis.__opencodeAutoMode`, shared by
+all copies in the process. Create any new mutable state there too, and mutate
+`global` in place, never reassign it.
 
 ## TUI <-> server
 
@@ -129,7 +137,10 @@ Errors anywhere -> ask (fail toward the user, never toward allow).
   current `override`).
 - Mutations (`setGlobal`, `setSetting`, `setOverride`) return a fresh `state` payload.
 - After any change the server emits `changed`; the TUI re-fetches every
-  session state it holds. Records are not streamed one by one.
+  session state it holds, plus the session on screen. Records are not streamed one by one.
+- The sidebar and footer icon take the session from the route (`currentSession()`),
+  not the slot's `sessionID`: a new chat draws the sidebar before its session
+  exists, and the slot does not pass the new ID.
 - The TUI caches payloads in `context.storage.memory("auto-mode")` keyed by
   session ID (`"home"` without one), plus a spinner frame and a count of
   mounted sidebars. `FooterIcon` renders only when no sidebar is mounted.
@@ -174,8 +185,10 @@ throwaway container (solid-js **1.9**, not 2.x) and run `tsc` with
 
 - Reviews on sessions whose model is on another provider than the reviewer use `generate.text`:
   no cost reported and no system/user split for caching.
-- Saved "always" approvals made **before** the plugin was installed are not
-  known to it; it learns new ones from `permission.asked` / `permission.replied` events.
+- "Always allow" on a prompt does the same as `allow` in the modal, session-only.
+  A whole-tool allow is not stored per row: `modeFor` shows it on every row of
+  that tool, and setting any of them back removes it. OpenCode still saves its own
+  approval for the project, but auto mode overrides `event.effect`, so that never skips review.
 - `shell.ts` is a heuristic splitter. When unsure it must mark a command
   `dynamic` or `writes` so it goes to review.
 

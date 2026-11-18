@@ -8,17 +8,21 @@ import { collectDocuments } from "./src/documents.ts";
 import { logDecision, logError } from "./src/log.ts";
 import { parseModel, parseOptions } from "./src/options.ts";
 import {
-  alikeRulesFor,
-  coveredByAlike,
+  addAllow,
   exactKey,
-  type AlikeRule,
+  NO_ALWAYS,
+  OVERRIDES,
+  removeAllow,
+  type AlikeEntry,
   type Override,
 } from "./src/overrides.ts";
 import type { CallRecord, RecordSource, RecordStatus } from "./src/records.ts";
 import { addUsage, emptyCost, type CallUsage, type CostTotal } from "./src/cost.ts";
 import { idleGuard, onDeny, onGuard, onReview, type Guard } from "./src/guard.ts";
 import {
+  alikePrompt,
   DENY_SUFFIX,
+  parseAlike,
   parseDecision,
   parseTriage,
   policyFrom,
@@ -37,7 +41,7 @@ import {
   type SettingKey,
 } from "./src/settings.ts";
 import { classify, EDIT_ACTIONS } from "./src/tiers.ts";
-import { buildTranscript, findToolCommand } from "./src/transcript.ts";
+import { buildTranscript, findToolCall, findToolCommand, latestUserText } from "./src/transcript.ts";
 
 const REVIEW_TIMEOUT_MS = 30_000;
 const CONTEXT_TIMEOUT_MS = 3_000;
@@ -47,15 +51,34 @@ const MAX_TOTAL_DENIALS = 20;
 const MAX_RECORDS = 300;
 const NO_MODEL = "no reviewer model: pick one in auto mode settings, or set \"model\" in the plugin options";
 
+/** Drops modes that no longer exist (the old pattern-based "alike"). */
+function validOverrides(stored: unknown): Record<string, Override> {
+  const result: Record<string, Override> = {};
+  if (stored && typeof stored === "object") {
+    for (const [key, value] of Object.entries(stored)) {
+      if (OVERRIDES.includes(value as Override)) result[key] = value as Override;
+    }
+  }
+  return result;
+}
+
+/** A row's mode as the modal shows it: a whole-tool allow shows on every row of that tool. */
+function modeFor(sess: SessionState, action: string, subject: string): Override {
+  const own = sess.overrides[exactKey(action, subject)];
+  if (own) return own;
+  return !NO_ALWAYS.has(action) && sess.always.includes(action) ? "allow" : "check";
+}
+
 interface SessionState {
   overrides: Record<string, Override>;
-  alike: Record<string, AlikeRule[]>;
+  /** "Allow" on an ordinary tool: every call to it, whatever the input. */
+  always: string[];
+  /** "Allow" on a `NO_ALWAYS` tool: the reviewer compares later calls with these. */
+  alikes: AlikeEntry[];
 }
 
 interface ProjectState {
   settings: ProjectSettings;
-  /** Patterns from "always allow" replies to permission prompts. */
-  approved: AlikeRule[];
 }
 
 interface SessionInfo {
@@ -106,18 +129,31 @@ export default Plugin.define({
     const save = (key: string, value: unknown) =>
       ctx.storage.set(key, JSON.parse(JSON.stringify(value))).catch((error: unknown) => logError(`storage set ${key}`, error));
 
-    let global: GlobalSettings = await load("global", globalDefaults(options));
-    const projects = new Map<string, ProjectState>();
-    const sessions = new Map<string, SessionState>();
+    // The server runs one copy of this plugin per location (home directory, each project) and a new
+    // copy on every hot reload. Hooks run in the session's copy while the TUI's RPC can land in another,
+    // so all mutable state lives in one object per process that every copy shares.
+    const shared = ((globalThis as any).__opencodeAutoMode ??= {}) as {
+      global?: GlobalSettings;
+      projects?: Map<string, ProjectState>;
+      sessions?: Map<string, SessionState>;
+      approvedExact?: Map<string, Set<string>>;
+      refused?: Map<string, Map<string, string | undefined>>;
+      denials?: Map<string, { consecutive: number; total: number }>;
+      records?: Map<string, CallRecord[]>;
+      byID?: Map<string, CallRecord>;
+      loading?: Map<string, Promise<void>>;
+      costs?: Map<string, CostTotal>;
+      guards?: Map<string, Guard>;
+    };
+    const global: GlobalSettings = (shared.global ??= await load("global", globalDefaults(options)));
+    const projects = (shared.projects ??= new Map<string, ProjectState>());
+    const sessions = (shared.sessions ??= new Map<string, SessionState>());
 
     const project = async (key: string): Promise<ProjectState> => {
       let state = projects.get(key);
       if (!state) {
         const stored = await load<Partial<ProjectState>>(`project:${key}`, {});
-        state = {
-          settings: { ...projectDefaults(options), ...(stored.settings ?? {}) },
-          approved: Array.isArray(stored.approved) ? stored.approved : [],
-        };
+        state = { settings: { ...projectDefaults(options), ...(stored.settings ?? {}) } };
         projects.set(key, state);
       }
       return state;
@@ -126,16 +162,24 @@ export default Plugin.define({
       let state = sessions.get(rootID);
       if (!state) {
         const stored = await load<Partial<SessionState>>(`session:${rootID}`, {});
-        state = { overrides: stored.overrides ?? {}, alike: stored.alike ?? {} };
+        state = {
+          overrides: validOverrides(stored.overrides),
+          always: Array.isArray(stored.always) ? stored.always : [],
+          alikes: Array.isArray(stored.alikes) ? stored.alikes : [],
+        };
         sessions.set(rootID, state);
       }
+      // Sessions loaded by an older copy of the plugin (hot reload) predate these fields and modes.
+      state.always ??= [];
+      state.alikes ??= [];
+      state.overrides = validOverrides(state.overrides);
       return state;
     };
 
     // In-memory only: the reviewer's exact approvals, refusals and denial counts.
-    const approvedExact = new Map<string, Set<string>>();
-    const refused = new Map<string, Map<string, string | undefined>>();
-    const denials = new Map<string, { consecutive: number; total: number }>();
+    const approvedExact = (shared.approvedExact ??= new Map<string, Set<string>>());
+    const refused = (shared.refused ??= new Map<string, Map<string, string | undefined>>());
+    const denials = (shared.denials ??= new Map<string, { consecutive: number; total: number }>());
 
     // ---------------------------------------------------------------- sessions
 
@@ -171,14 +215,14 @@ export default Plugin.define({
 
     // Persisted per root session so the list survives plugin reloads (every
     // config save reloads plugins). Writes are debounced per session.
-    const records = new Map<string, CallRecord[]>();
-    const byID = new Map<string, CallRecord>();
+    const records = (shared.records ??= new Map<string, CallRecord[]>());
+    const byID = (shared.byID ??= new Map<string, CallRecord>());
     let emit: (rootID: string) => void = () => {};
     let notify: (rootID: string) => void = () => {};
 
-    const loading = new Map<string, Promise<void>>();
-    const costs = new Map<string, CostTotal>();
-    const guards = new Map<string, Guard>();
+    const loading = (shared.loading ??= new Map<string, Promise<void>>());
+    const costs = (shared.costs ??= new Map<string, CostTotal>());
+    const guards = (shared.guards ??= new Map<string, Guard>());
     const snapshot = (rootID: string) => ({
       list: records.get(rootID) ?? [],
       cost: costs.get(rootID) ?? emptyCost(),
@@ -267,7 +311,7 @@ export default Plugin.define({
       await ensureRecords(info.rootID);
       const list = (records.get(info.rootID) ?? []).map((record) => ({
         ...record,
-        override: sess?.overrides[exactKey(record.action, record.subject)] ?? "check",
+        override: sess ? modeFor(sess, record.action, record.subject) : "check",
       }));
       return {
         enabled: global.enabled,
@@ -282,6 +326,7 @@ export default Plugin.define({
         keybind: options.keybind,
         rootID: info.rootID,
         records: list,
+        allowed: { tools: sess?.always ?? [], alikes: sess?.alikes ?? [] },
         cost: costs.get(info.rootID) ?? emptyCost(),
         guard: (guards.get(info.rootID) ?? idleGuard()).remaining,
       };
@@ -292,7 +337,6 @@ export default Plugin.define({
       setGlobal: async (input: any) => {
         if (typeof input?.enabled === "boolean") global.enabled = input.enabled;
         if (typeof input?.yoloEdits === "boolean") global.yoloEdits = input.yoloEdits;
-        global = { ...global };
         await save("global", global);
         emit("*");
         return statePayload(input ?? {});
@@ -327,13 +371,17 @@ export default Plugin.define({
       setOverride: async (input: any) => {
         const record = byID.get(String(input?.recordID));
         const value = input?.value as Override;
-        if (record && ["deny", "check", "allow", "alike"].includes(value)) {
+        if (record && OVERRIDES.includes(value)) {
           const sess = await session(record.rootID);
           const key = exactKey(record.action, record.subject);
-          delete sess.alike[key];
-          if (value === "check") delete sess.overrides[key];
+          if (value === "allow") {
+            const goal = latestUserText(await messagesFor(record.sessionID));
+            addAllow(sess, record.action, record.subject, goal);
+          } else if (modeFor(sess, record.action, record.subject) === "allow") {
+            removeAllow(sess, record.action, record.subject);
+          }
+          if (value === "check" || (value === "allow" && !NO_ALWAYS.has(record.action))) delete sess.overrides[key];
           else sess.overrides[key] = value;
-          if (value === "alike") sess.alike[key] = alikeRulesFor(record.action, record.resources);
           approvedExact.get(record.rootID)?.delete(key);
           refused.get(record.rootID)?.delete(key);
           await save(`session:${record.rootID}`, sess);
@@ -546,6 +594,40 @@ export default Plugin.define({
       return escalate(event, record, "reviewer", reason);
     };
 
+    /** "Always allow" on a `NO_ALWAYS` tool: does the reviewer find this call alike to one the user allowed? */
+    const alikeCheck = async (
+      event: any,
+      record: CallRecord,
+      info: SessionInfo,
+      messages: unknown[],
+      settings: ProjectSettings,
+      model: ModelRef,
+      alikes: AlikeEntry[],
+    ): Promise<boolean> => {
+      record.status = "reviewing";
+      record.reason = "";
+      emit(record.rootID);
+      const docs = collectDocuments({
+        directory: info.directory,
+        settings,
+        memoryDir: options.memoryDir,
+        memoryFile: options.memoryFile,
+      });
+      const request: ReviewRequest = {
+        action: event.action,
+        subject: record.subject,
+        agent: event.agent,
+        directory: info.directory,
+        transcript: buildTranscript(messages, settings.messages, event.source?.id).text,
+        background: docs.background,
+        instructions: docs.instructions,
+      };
+      const system = systemPrompt(policy, docs.background, docs.instructions);
+      if (info.provider && info.provider !== model.providerID) textOnly.add(pairKey(event.sessionID, model));
+      const answer = await ask(event.sessionID, record.rootID, model, system, alikePrompt(request, alikes));
+      return answer !== undefined && parseAlike(answer);
+    };
+
     const approved = (rootID: string) => {
       let set = approvedExact.get(rootID);
       if (!set) approvedExact.set(rootID, (set = new Set()));
@@ -644,9 +726,19 @@ export default Plugin.define({
         await ensureRecords(info.rootID);
         const callID = event.source?.id ? String(event.source.id) : undefined;
         const resources: string[] = [...(event.resources ?? [])];
-        const messages = event.action === "shell" ? await messagesFor(event.sessionID) : undefined;
+        // MCP tools and the like check the catch-all "*"; the reviewer and the exact-command cache need the real input.
+        const wildcard = event.action !== "shell" && resources.every((resource) => resource === "*");
+        const messages = event.action === "shell" || wildcard ? await messagesFor(event.sessionID) : undefined;
         const command = event.action === "shell" ? findToolCommand(messages ?? [], callID) : undefined;
-        const subject = event.action === "shell" ? command ?? resources.join(" && ") : resources.join("\n");
+        const call = wildcard ? findToolCall(messages ?? [], callID) : undefined;
+        const subject =
+          event.action === "shell"
+            ? command ?? resources.join(" && ")
+            : call
+              ? call.name === event.action
+                ? describe(call.name, call.input)
+                : `inside ${call.name}: ${describe(call.name, call.input)}`
+              : resources.join("\n");
 
         // One tool call can check several actions (shell checks external_directory first); give each its own row.
         const existing = callID ? byID.get(callID) : undefined;
@@ -684,9 +776,8 @@ export default Plugin.define({
         const override = sess.overrides[key];
         if (override === "deny") return deny(event, record, "override", "you set this command to deny for this session");
         if (override === "allow") return allow(event, record, "override", "you allowed this command for this session");
-        const alikeRules = [...Object.values(sess.alike).flat(), ...proj.approved];
-        if (override !== "check" && coveredByAlike(alikeRules, event.action, resources)) {
-          return allow(event, record, "alike", "matches a command you allowed alike");
+        if (override !== "check" && !NO_ALWAYS.has(event.action) && sess.always.includes(event.action)) {
+          return allow(event, record, "always", "you always allowed this tool for this session");
         }
 
         const tier = classify({ action: event.action, resources, command, tool, yoloEdits: global.yoloEdits });
@@ -708,6 +799,12 @@ export default Plugin.define({
         if (override !== "check" && refusedFor?.has(key) && refusedFor.get(key) === lastUserID) {
           return deny(event, record, "refused", "the reviewer refused this exact command already; it stays refused until you send a new message");
         }
+        const alikes = sess.alikes.filter((entry) => entry.action === event.action);
+        if (override !== "check" && alikes.length > 0 && !onGuard(guards.get(info.rootID))) {
+          if (await alikeCheck(event, record, info, all, proj.settings, reviewer, alikes)) {
+            return allow(event, record, "alike", "the reviewer found it alike to a call you always allowed this session");
+          }
+        }
 
         await review(event, record, info, all, proj.settings, reviewer);
       } catch (error) {
@@ -716,9 +813,9 @@ export default Plugin.define({
       }
     });
 
-    // "Always allow" on a prompt: allow that pattern without review for the rest of the project, like OpenCode saves it.
+    // "Always allow" on a prompt, for this session: the whole tool, or for `NO_ALWAYS` tools an alike rule the reviewer checks.
     const abort = new AbortController();
-    const asked = new Map<string, { sessionID: string; action: string; save: string[] }>();
+    const asked = new Map<string, { sessionID: string; action: string; callID?: string }>();
     void (async () => {
       try {
         for await (const event of ctx.event.subscribe({
@@ -727,19 +824,24 @@ export default Plugin.define({
         } as any) as AsyncIterable<any>) {
           if (event.type === "permission.asked") {
             const data = event.data;
-            asked.set(data.id, { sessionID: data.sessionID, action: data.action, save: data.save ?? data.resources ?? [] });
+            asked.set(data.id, { sessionID: data.sessionID, action: data.action, callID: data.source?.id });
           } else if (event.type === "permission.replied") {
             const request = asked.get(event.data.requestID);
             asked.delete(event.data.requestID);
-            if (!request || event.data.reply !== "always") continue;
+            if (!request?.callID || event.data.reply !== "always") continue;
             const info = await sessionInfo(request.sessionID);
-            const proj = await project(info.projectKey);
-            for (const pattern of request.save) {
-              if (!proj.approved.some((rule) => rule.action === request.action && rule.pattern === pattern)) {
-                proj.approved.push({ action: request.action, pattern });
-              }
-            }
-            await save(`project:${info.projectKey}`, proj);
+            await ensureRecords(info.rootID);
+            // One tool call can hold several rows (`<callID>:<action>:<time>`); take the latest for this action.
+            const record = [...(records.get(info.rootID) ?? [])]
+              .reverse()
+              .find((r) => r.action === request.action && (r.id === request.callID || r.id.startsWith(`${request.callID}:`)));
+            if (!record) continue;
+            const sess = await session(info.rootID);
+            // Same as "allow" on the row in the modal.
+            addAllow(sess, record.action, record.subject, latestUserText(await messagesFor(request.sessionID)));
+            if (NO_ALWAYS.has(record.action)) sess.overrides[exactKey(record.action, record.subject)] = "allow";
+            await save(`session:${info.rootID}`, sess);
+            emit(info.rootID);
           }
         }
       } catch (error) {

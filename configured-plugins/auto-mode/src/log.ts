@@ -51,8 +51,19 @@ export function logDecision(entry: Record<string, unknown>): void {
   append("decisions.jsonl", JSON.stringify({ time: new Date().toISOString(), ...entry }));
 }
 
+function describeError(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (error === undefined) return "";
+  if (typeof error === "object" && error !== null) {
+    try {
+      return JSON.stringify(error);
+    } catch {}
+  }
+  return String(error);
+}
+
 /** Plugin errors, for debugging (latest 1000 kept). */
 export function logError(message: string, error?: unknown): void {
-  const detail = error instanceof Error ? error.message : error === undefined ? "" : String(error);
+  const detail = describeError(error);
   append("plugin.log", `${new Date().toISOString()} ${message}${detail ? `: ${detail}` : ""}`);
 }

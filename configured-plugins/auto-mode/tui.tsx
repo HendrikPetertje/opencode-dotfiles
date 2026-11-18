@@ -5,13 +5,14 @@
  */
 import { Plugin, usePlugin } from "@opencode/plugin/tui";
 import { RGBA, TextAttributes } from "@opentui/core";
-import { createSignal, onCleanup, onMount } from "solid-js";
+import { createEffect, createSignal, on as track, onCleanup, onMount } from "solid-js";
 import { spawn } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { stateDir } from "./src/paths.ts";
+import { logError } from "./src/log.ts";
 import { cachedShare, emptyCost, formatUsd, type CostTotal } from "./src/cost.ts";
-import { cycle, type Override } from "./src/overrides.ts";
+import { cycle, NO_ALWAYS, OVERRIDES, type AlikeEntry, type Override } from "./src/overrides.ts";
 import { shorten, type CallRecord } from "./src/records.ts";
 import { AutoMode } from "./src/rpc.ts";
 import type { ProjectSettings, SettingRow } from "./src/settings.ts";
@@ -26,6 +27,8 @@ interface Payload {
   keybind: string;
   rootID: string;
   records: (CallRecord & { override: Override })[];
+  /** What "allow" (modal) and "always allow" (prompt) allowed this session. */
+  allowed?: { tools: string[]; alikes: AlikeEntry[] };
   cost: CostTotal;
   /** Guarded reviews left after a deny; 0 when not on guard. */
   guard: number;
@@ -99,8 +102,15 @@ const OVERRIDE_STYLE: Record<Override, { label: string; color: unknown }> = {
   deny: { label: "deny", color: COLOR.love },
   check: { label: "check", color: COLOR.gold },
   allow: { label: "allow", color: COLOR.foam },
-  alike: { label: "allow alike", color: COLOR.pine },
 };
+
+/** "allow" means the whole tool, or alike calls for tools whose input is everything. */
+const overrideLabel = (value: Override, action: string) =>
+  value === "allow" ? (NO_ALWAYS.has(action) ? "allow alike" : "allow tool") : OVERRIDE_STYLE[value].label;
+const allowHint = (action: string) =>
+  NO_ALWAYS.has(action)
+    ? "allow alike: the reviewer allows later calls with the same kind of goal, this session"
+    : `allow tool: every ${action} call is allowed, whatever its input, this session`;
 
 function statusGlyph(record: CallRecord, frame: number): { glyph: string; color: unknown } {
   switch (record.status) {
@@ -147,20 +157,28 @@ export default Plugin.define({
     const refresh = async (sessionID: string | undefined) => {
       try {
         store_(sessionID, await rpc().state({ sessionID, directory: directory() }));
-      } catch {}
+      } catch (error) {
+        // The server registers its RPC a moment after the TUI starts; the next `changed` event retries.
+        if ((error as any)?.type !== "rpc.unavailable") logError(`tui refresh ${sessionID ?? "home"}`, error);
+      }
     };
     const call = async (method: string, sessionID: string | undefined, input: Record<string, unknown>) => {
       try {
         store_(sessionID, await rpc()[method]({ sessionID, directory: directory(), ...input }));
-      } catch {}
+      } catch (error) {
+        logError(`tui ${method}`, error);
+      }
     };
 
     let unsubscribe: (() => void) | undefined;
     try {
       unsubscribe = rpc().events.on("changed", () => {
-        for (const id of Object.keys(store.states)) void refresh(id === "home" ? undefined : id);
+        const ids = new Set([...Object.keys(store.states), key(currentSession())]);
+        for (const id of ids) void refresh(id === "home" ? undefined : id);
       });
-    } catch {}
+    } catch (error) {
+      logError("tui events.on changed", error);
+    }
     const spinner = setInterval(() => {
       const busy = Object.values(store.states).some((state) => state.records?.some((r) => r.status === "reviewing"));
       if (busy) update((draft) => void (draft.frame = (draft.frame + 1) % 600));
@@ -289,6 +307,40 @@ export default Plugin.define({
       const on = () => state()?.enabled ?? false;
       const dim = (color: unknown) => (on() ? color : COLOR.muted);
 
+      /** Everything "allow" / "always allow" allowed this session. Undo: set the call's row back to check. */
+      const Allowed = () => {
+        const tools = () => state()?.allowed?.tools ?? [];
+        const alikes = () => state()?.allowed?.alikes ?? [];
+        const flat = (text: string, max: number) => {
+          const line = text.replace(/\s+/g, " ").trim();
+          return line.length > max ? `${line.slice(0, max - 1)}…` : line;
+        };
+        return (
+          <box flexDirection="column" flexShrink={0} marginTop={1}>
+            <text fg={COLOR.foam as any} attributes={TextAttributes.BOLD}>
+              Allowed this session
+            </text>
+            {tools().length === 0 && alikes().length === 0 && <text fg={COLOR.muted as any}>Nothing yet.</text>}
+            {tools().map((tool) => (
+              <box flexDirection="row" flexShrink={0} gap={2}>
+                <text fg={ctx.theme.text.base as any}>{tool}</text>
+                <text fg={COLOR.muted as any}>every call</text>
+              </box>
+            ))}
+            {alikes().map((entry) => (
+              <box flexDirection="column" flexShrink={0}>
+                <box flexDirection="row" flexShrink={0} gap={1}>
+                  <text fg={ctx.theme.text.base as any}>{entry.action}</text>
+                  <text fg={COLOR.muted as any}>alike to</text>
+                  <text fg={ctx.theme.text.base as any}>{flat(entry.subject, 60)}</text>
+                </box>
+                {entry.goal && <text fg={COLOR.muted as any}>{`  for: ${flat(entry.goal, 70)}`}</text>}
+              </box>
+            ))}
+          </box>
+        );
+      };
+
       const Decisions = () => (
         <box flexDirection="row" flexGrow={1} flexBasis={0} minHeight={0} gap={2}>
           <scrollbox ref={(el: any) => (scroll = el)} width="40%" flexShrink={0} minHeight={0}>
@@ -303,7 +355,7 @@ export default Plugin.define({
                   onMouseUp={() => setSelected(index)}
                 >
                   <text fg={dim(mark().color) as any}>{`${mark().glyph} `}</text>
-                  <text fg={dim(record.override === "check" ? ctx.theme.text.base : OVERRIDE_STYLE[record.override].color) as any}>
+                  <text fg={dim(record.override === "check" ? ctx.theme.text.base : OVERRIDE_STYLE[record.override]?.color ?? ctx.theme.text.base) as any}>
                     {shorten(record, 44)}
                   </text>
                 </box>
@@ -326,20 +378,24 @@ export default Plugin.define({
                 </scrollbox>
                 <box flexDirection="row" flexShrink={0} gap={1}>
                   <text fg={COLOR.muted as any}>From now on:</text>
-                  {(["deny", "check", "allow", "alike"] as Override[]).map((value) => (
+                  {OVERRIDES.map((value) => (
                     <text
                       fg={(selectedRecord()!.override === value ? OVERRIDE_STYLE[value].color : COLOR.muted) as any}
                       attributes={selectedRecord()!.override === value ? TextAttributes.BOLD : 0}
                       onMouseUp={() => void call("setOverride", props.sessionID, { recordID: selectedRecord()!.id, value })}
                     >
-                      {selectedRecord()!.override === value ? `[${OVERRIDE_STYLE[value].label}]` : ` ${OVERRIDE_STYLE[value].label} `}
+                      {selectedRecord()!.override === value
+                        ? `[${overrideLabel(value, selectedRecord()!.action)}]`
+                        : ` ${overrideLabel(value, selectedRecord()!.action)} `}
                     </text>
                   ))}
                 </box>
+                <text fg={COLOR.muted as any}>{allowHint(selectedRecord()!.action)}</text>
               </>
             ) : (
               <text fg={COLOR.muted as any}>Nothing selected.</text>
             )}
+            <Allowed />
           </box>
         </box>
       );
@@ -423,19 +479,19 @@ export default Plugin.define({
 
     // ------------------------------------------------------------------ sidebar
 
-    const Sidebar = (props: { sessionID: string }) => {
+    const Sidebar = (props: { sessionID?: string }) => {
       const ctx = usePlugin();
-      onMount(() => {
-        update((draft) => void (draft.sidebars += 1));
-        void refresh(props.sessionID);
-      });
+      // A new chat draws the sidebar before its session exists, and the slot does not pass the new ID; follow the route.
+      const sessionID = () => currentSession() ?? props.sessionID;
+      onMount(() => update((draft) => void (draft.sidebars += 1)));
+      createEffect(track(sessionID, (id) => void refresh(id)));
       onCleanup(() => update((draft) => void (draft.sidebars = Math.max(0, draft.sidebars - 1))));
-      const state = () => store.states[key(props.sessionID)];
+      const state = () => store.states[key(sessionID())];
       const on = () => state()?.enabled ?? false;
       const rows = () => visible(state()).slice(0, SIDEBAR_ROWS);
       return (
         <box flexDirection="column" flexShrink={0}>
-          <box flexDirection="row" gap={1} onMouseUp={() => open(props.sessionID)}>
+          <box flexDirection="row" gap={1} onMouseUp={() => open(sessionID())}>
             <text fg={(!on() ? COLOR.muted : (state()?.guard ?? 0) > 0 ? COLOR.gold : COLOR.foam) as any}>{ICON.shield}</text>
             <text fg={(on() ? ctx.theme.text.base : COLOR.muted) as any} attributes={TextAttributes.BOLD}>
               Auto mode
@@ -446,13 +502,13 @@ export default Plugin.define({
           {rows().map((record) => {
             const mark = () => statusGlyph(record, store.frame);
             return (
-              <box flexDirection="row" onMouseUp={() => open(props.sessionID, record.id)}>
+              <box flexDirection="row" onMouseUp={() => open(sessionID(), record.id)}>
                 <text fg={(on() ? mark().color : COLOR.muted) as any}>{`${mark().glyph} `}</text>
                 <text fg={(on() ? ctx.theme.text.base : COLOR.muted) as any}>{shorten(record, 30)}</text>
               </box>
             );
           })}
-          <text fg={COLOR.muted as any} onMouseUp={() => open(props.sessionID)}>
+          <text fg={COLOR.muted as any} onMouseUp={() => open(sessionID())}>
             {rows().length === 0 ? "no tool calls yet" : "… more"}
           </text>
         </box>
@@ -462,14 +518,58 @@ export default Plugin.define({
     // ------------------------------------------------------------------ footer
 
     const FooterIcon = (props: { sessionID?: string }) => {
-      onMount(() => void refresh(props.sessionID));
-      const state = () => store.states[key(props.sessionID)];
+      const sessionID = () => currentSession() ?? props.sessionID;
+      createEffect(track(sessionID, (id) => void refresh(id)));
+      const state = () => store.states[key(sessionID())];
       const reviewing = () => state()?.records?.some((r) => r.status === "reviewing") ?? false;
       return store.sidebars > 0 ? null : (
-        <box flexDirection="row" flexShrink={0} onMouseUp={() => open(props.sessionID)}>
+        <box flexDirection="row" flexShrink={0} onMouseUp={() => open(sessionID())}>
           <text fg={(!state()?.enabled ? COLOR.muted : reviewing() || (state()?.guard ?? 0) > 0 ? COLOR.gold : COLOR.foam) as any}>
             {reviewing() && state()?.enabled ? SPINNER[store.frame % SPINNER.length] : ICON.shield}
           </text>
+        </box>
+      );
+    };
+
+    // ------------------------------------------------------------------ permission reason
+
+    // OpenCode's permission prompt does not show the request's `message`; auto mode's reason for asking lives there.
+    const AskReason = (props: { sessionID: string }) => {
+      const sessionID = () => currentSession() ?? props.sessionID;
+      createEffect(
+        track(sessionID, (id) => {
+          for (const member of context.data.session.family(id)) void context.data.session.permission.sync(member).catch(() => {});
+        }),
+      );
+      const reasons = () =>
+        context.data.session
+          .family(sessionID())
+          .flatMap((member) => context.data.session.permission.list(member) ?? [])
+          .map((request: any) => (typeof request.message === "string" ? request.message : ""))
+          .filter((message) => message.startsWith("auto-mode"))
+          .map((message) => message.replace(/^auto-mode:\s*/, ""));
+      return (
+        <box flexDirection="column" flexShrink={0}>
+          {reasons().length > 0 && (
+            <box
+              flexDirection="column"
+              border={["left"]}
+              borderColor={COLOR.gold as any}
+              backgroundColor={COLOR.surface as any}
+              paddingLeft={1}
+              paddingRight={1}
+            >
+              <box flexDirection="row" gap={1}>
+                <text fg={COLOR.gold as any}>{ICON.shield}</text>
+                <text fg={COLOR.gold as any} attributes={TextAttributes.BOLD}>
+                  Auto mode wants you to decide
+                </text>
+              </box>
+              {reasons().map((reason) => (
+                <text fg={COLOR.muted as any}>{reason}</text>
+              ))}
+            </box>
+          )}
         </box>
       );
     };
@@ -484,6 +584,10 @@ export default Plugin.define({
         const route = context.ui.router.current();
         return route?.type === "session" ? <FooterIcon sessionID={route.sessionID} /> : null;
       },
+    });
+    const stopAskReason = context.ui.slot({
+      prepend: "session.composer.top",
+      render: (input) => <AskReason sessionID={input.sessionID} />,
     });
 
     context.keymap.layer(() => ({
@@ -507,6 +611,7 @@ export default Plugin.define({
       unsubscribe?.();
       stopSidebar?.();
       stopFooter?.();
+      stopAskReason?.();
     };
   },
 });

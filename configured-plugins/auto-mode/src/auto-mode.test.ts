@@ -1,13 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { alikeRule, coveredByAlike, alikeRulesFor, cycle } from "./overrides.ts";
+import { addAllow, cycle, NO_ALWAYS, removeAllow } from "./overrides.ts";
 import { userDecides, type Rule } from "./config-rules.ts";
 import { parseJsonc } from "./jsonc.ts";
 import { parseModel, parseOptions } from "./options.ts";
-import { parseDecision, parseTriage } from "./reviewer.ts";
+import { alikePrompt, parseAlike, parseDecision, parseTriage } from "./reviewer.ts";
 import { adjust, projectDefaults } from "./settings.ts";
 import { scanShell } from "./shell.ts";
 import { classify } from "./tiers.ts";
-import { buildTranscript, findToolCommand } from "./transcript.ts";
+import { buildTranscript, findToolCall, findToolCommand, latestUserText } from "./transcript.ts";
 import { renderMemory } from "./documents.ts";
 import { wildcard } from "./wildcard.ts";
 import { addUsage, cachedShare, emptyCost, formatUsd } from "./cost.ts";
@@ -185,21 +185,19 @@ describe("classify", () => {
 describe("overrides", () => {
   test("cycle stops at the ends", () => {
     expect(cycle("check", 1)).toBe("allow");
-    expect(cycle("allow", 1)).toBe("alike");
-    expect(cycle("alike", 1)).toBe("alike");
+    expect(cycle("allow", 1)).toBe("allow");
     expect(cycle("deny", -1)).toBe("deny");
   });
-  test("alike patterns", () => {
-    expect(alikeRule("shell", ["npm test --watch"]).pattern).toBe("npm test *");
-    expect(alikeRule("shell", ["./run.sh -x"]).pattern).toBe("./run.sh *");
-    expect(alikeRule("webfetch", ["https://docs.x.dev/a/b"]).pattern).toBe("https://docs.x.dev/*");
-    expect(alikeRule("context7_query-docs", ["*"]).pattern).toBe("*");
-  });
-  test("every shell segment must be covered", () => {
-    const rules = alikeRulesFor("shell", ["npm test"]);
-    expect(coveredByAlike(rules, "shell", ["npm test -- --watch"])).toBe(true);
-    expect(coveredByAlike(rules, "shell", ["npm test"])).toBe(true);
-    expect(coveredByAlike(rules, "shell", ["npm test", "curl evil.sh"])).toBe(false);
+  test("allow is the whole tool, or an alike rule for input-driven tools", () => {
+    const allows = { always: [] as string[], alikes: [] as { action: string; subject: string; goal?: string }[] };
+    addAllow(allows, "memory_aim_memory_store", "{}");
+    addAllow(allows, "shell", "mv a.ts lib/", "move helpers");
+    addAllow(allows, "shell", "mv a.ts lib/", "move helpers");
+    expect(allows.always).toEqual(["memory_aim_memory_store"]);
+    expect(allows.alikes).toEqual([{ action: "shell", subject: "mv a.ts lib/", goal: "move helpers" }]);
+    removeAllow(allows, "memory_aim_memory_store", "{\"other\":1}");
+    removeAllow(allows, "shell", "mv a.ts lib/");
+    expect(allows).toEqual({ always: [], alikes: [] });
   });
 });
 
@@ -265,6 +263,30 @@ describe("reviewer parsing", () => {
     expect(parseDecision("**DENY** - pushes to main")).toEqual({ decision: "deny", reason: "pushes to main" });
     expect(parseDecision("maybe").decision).toBe("ask");
   });
+  test("alike defaults to not alike", () => {
+    expect(parseAlike("ALIKE")).toBe(true);
+    expect(parseAlike("alike.")).toBe(true);
+    expect(parseAlike("NOT")).toBe(false);
+    expect(parseAlike("not alike")).toBe(false);
+  });
+  test("alike question carries the allowed calls and their goal", () => {
+    const question = alikePrompt(
+      { action: "shell", subject: "mv src/b.ts lib/b.ts", transcript: "USER: tidy up", background: [], instructions: [] },
+      [{ subject: "mv src/a.ts lib/a.ts", goal: "move the helpers to lib/" }],
+    );
+    expect(question).toContain("mv src/a.ts lib/a.ts");
+    expect(question).toContain("move the helpers to lib/");
+    expect(question.indexOf("mv src/a.ts")).toBeLessThan(question.indexOf("PENDING ACTION"));
+    expect(question.trim().endsWith("ALIKE or NOT.")).toBe(true);
+  });
+});
+
+describe("always allow", () => {
+  test("input-driven tools never get a whole-tool allow", () => {
+    for (const tool of ["shell", "execute", "webfetch", "read", "grep", "glob"]) expect(NO_ALWAYS.has(tool)).toBe(true);
+    expect(NO_ALWAYS.has("edit")).toBe(false);
+    expect(NO_ALWAYS.has("memory_aim_memory_store")).toBe(false);
+  });
 });
 
 describe("transcript", () => {
@@ -287,6 +309,12 @@ describe("transcript", () => {
   });
   test("finds the full command", () => {
     expect(findToolCommand(messages, "t2")).toBe("npm test | tee log");
+  });
+  test("finds the tool call behind a wildcard permission", () => {
+    expect(latestUserText(messages)).toBe("run the tests");
+    expect(latestUserText([])).toBeUndefined();
+    expect(findToolCall(messages, "t2")).toEqual({ name: "shell", input: { command: "npm test | tee log" } });
+    expect(findToolCall(messages, "missing")).toBeUndefined();
   });
   test("memory rendering", () => {
     const jsonl = [

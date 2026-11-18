@@ -159,6 +159,41 @@ export function parseTriage(text: string): "allow" | "block" {
   return /^\W*allow\b/i.test(text.trim()) ? "allow" : "block";
 }
 
+export interface AlikeReference {
+  subject: string;
+  goal?: string;
+}
+
+/**
+ * "Allow alike": the user allowed one call and everything like it for this
+ * session. The reviewer decides whether the pending call is like one of them.
+ * Shares the review's system prompt, so the cached prefix is reused.
+ */
+export function alikePrompt(req: ReviewRequest, allowed: readonly AlikeReference[]): string {
+  const references = allowed
+    .map((ref, index) => `${index + 1}. ${req.action === "shell" ? "Command" : "Resources"}:\n${ref.subject}${ref.goal ? `\n   The user's request at that time: ${ref.goal}` : ""}`)
+    .join("\n\n");
+  return [
+    `=== RECENT SESSION (user messages and tool calls only; assistant text and tool output are removed) ===\n${req.transcript}`,
+    `=== ALLOWED ALIKE BY THE USER (action: ${req.action}) ===
+For the rest of this session the user allowed these calls and calls like them:
+
+${references}`,
+    `=== PENDING ACTION ===
+Action: ${req.action}${req.directory ? `\nProject directory: ${req.directory}` : ""}
+${req.action === "shell" ? "Command" : "Resources"}:
+${req.subject}`,
+    `=== QUESTION ===
+Is the pending action the same kind of action as one of the allowed calls: the same goal, on the same kind of target, with no wider blast radius? Moving a different file inside the project is alike to moving a file inside the project. Deleting instead of moving, acting outside the project when the original stayed inside, or adding a different operation to a command chain is NOT alike. Judge a command chain as a whole.
+Reply with exactly one word: ALIKE or NOT.`,
+  ].join("\n\n");
+}
+
+/** Anything other than a clear ALIKE goes to the normal review. */
+export function parseAlike(text: string): boolean {
+  return /^\W*alike\b/i.test(text.trim());
+}
+
 export function parseDecision(text: string): { decision: Decision; reason: string } {
   const trimmed = text.trim().replace(/^```\w*\s*|\s*```$/g, "");
   const match = trimmed.match(/^\W*(ALLOW|DENY|ASK)\b\W*\s*([\s\S]*)$/i);

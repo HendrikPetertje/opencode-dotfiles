@@ -19,6 +19,7 @@ export type RecordSource =
   | "yolo"
   | "config"
   | "override"
+  | "always"
   | "alike"
   | "cache"
   | "refused"
