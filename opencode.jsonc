@@ -167,7 +167,7 @@
           "--rm",
           "peva-calculator-mcp:latest"
         ],
-        // "disabled": true
+        "disabled": true
       },
       "chrome-devtools": {
         "type": "local",
@@ -214,34 +214,6 @@
         "url": "https://mcp.exa.ai/mcp?exaApiKey={env:EXA_API_KEY}",
         "disabled": true
       },
-      "fetch": {
-        "type": "local",
-        "command": [
-          "podman",
-          "run",
-          "--rm",
-          "-i",
-          "peva-fetch-mcp:latest"
-        ],
-        "disabled": true
-      },
-      "github": {
-        "type": "remote",
-        "url": "https://api.githubcopilot.com/mcp/",
-        "headers": {
-          "Authorization": "Bearer {env:GITHUB_PERSONAL_ACCESS_TOKEN}"
-        },
-        "disabled": true
-      },
-      // This plugin is extremely dangerous to use
-      // grep.app does not sort searces in any curated/popular/etc. way
-      // last time i checked searching for "svelte" only gave real svelte docs at result #11
-      // It will output ANY code snippets, including obvious LLM injection traps (result #4 when looking for svelte)
-      "gh_grep": {
-        "type": "remote",
-        "url": "https://mcp.grep.app",
-        "disabled": true
-      },
       "jira": {
         "type": "local",
         "command": [
@@ -284,14 +256,6 @@
           "npx",
           "@playwright/mcp@latest"
         ],
-        "disabled": true
-      },
-      "sanity": {
-        "type": "remote",
-        "url": "https://mcp.sanity.io",
-        "headers": {
-          "Authorization": "Bearer {env:SANITY_MCP_TOKEN}"
-        },
         "disabled": true
       },
       "sequentialthinking": {
