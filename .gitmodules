@@ -13,3 +13,7 @@
 	path = configured-plugins/sandbox-mode
 	url = https://github.com/HendrikPetertje/opencode-sandbox-mode.git
 	branch = main
+[submodule "configured-plugins/agent-dashboard"]
+	path = configured-plugins/agent-dashboard
+	url = https://github.com/HendrikPetertje/opencode-agent-dashboard.git
+	branch = main

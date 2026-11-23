@@ -13,6 +13,7 @@
     "session.compact": "none",
     "memory-ticker.project": "<leader>k",
     "memory-ticker.global": "<leader>shift+k",
+    "agent-dashboard.open": "<leader>h",
     "input.submit": "return",
     "input.newline": "alt+return,ctrl+j"
   },

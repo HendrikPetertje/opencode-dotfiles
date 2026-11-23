@@ -140,6 +140,10 @@
         "memoryDir": "~/.config/.aim",
         "includeAgentsMd": false
       }
+    },
+    // Sessions dashboard modal, opened with /dashboard. See configured-plugins/agent-dashboard/README.md.
+    {
+      "package": "./configured-plugins/agent-dashboard"
     }
   ],
   "mcp": {
