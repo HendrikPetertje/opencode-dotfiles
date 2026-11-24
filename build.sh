@@ -4,8 +4,8 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 # npm only reads the project .npmrc from the folder it runs in, so pass the
-# registry to the submodule builds explicitly
-export npm_config_registry=https://registry.npmjs.org/
+# release-age guard to the submodule builds explicitly
+export npm_config_min_release_age=2
 
 git submodule sync --recursive
 git submodule update --init --recursive
