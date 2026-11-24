@@ -36,4 +36,7 @@ git submodule foreach --quiet '
     echo "$sm_path: building"
     npm run --silent build
   fi
+  if [ -x scripts/install-skills.sh ]; then
+    ./scripts/install-skills.sh || echo "$sm_path: some skills were not linked"
+  fi
 '
