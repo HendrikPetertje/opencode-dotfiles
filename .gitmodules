@@ -17,3 +17,7 @@
 	path = configured-plugins/agent-dashboard
 	url = https://github.com/HendrikPetertje/opencode-agent-dashboard.git
 	branch = main
+[submodule "configured-plugins/opencode-stt"]
+	path = configured-plugins/opencode-stt
+	url = https://github.com/HendrikPetertje/opencode-stt.git
+	branch = main

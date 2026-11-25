@@ -11,6 +11,7 @@
     "session.tab.previous": "<leader>p",
     "session.tab.reopen": "<leader>shift+c",
     "session.compact": "none",
+    "session.rename": "none",
     "memory-ticker.project": "<leader>k",
     "memory-ticker.global": "<leader>shift+k",
     "agent-dashboard.open": "<leader>h",

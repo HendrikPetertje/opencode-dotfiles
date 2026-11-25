@@ -141,6 +141,13 @@
         "includeAgentsMd": false
       }
     },
+    // Speech-to-text: record, transcribe locally with whisper, clean up with a model from your providers. See configured-plugins/opencode-stt/README.md.
+    {
+      "package": "./configured-plugins/opencode-stt",
+      "options": {
+        "model": "github-copilot/claude-haiku-5.5"
+      }
+    },
     // Sessions dashboard modal, opened with /dashboard. See configured-plugins/agent-dashboard/README.md.
     {
       "package": "./configured-plugins/agent-dashboard"

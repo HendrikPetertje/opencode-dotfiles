@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "@opencode/plugin": "2.0.21"
+    "@opencode/plugin": "2.3.2"
   },
   "allowScripts": {
     "msgpackr-extract": true
