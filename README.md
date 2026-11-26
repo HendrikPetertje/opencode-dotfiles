@@ -178,6 +178,12 @@ auto-mode reads extra reviewer rules from `AUTO_MODE_INSTRUCTIONS.md` in this
 folder (global) or a project's `.opencode/` (per project). Its decision log and
 error log are in `~/.local/state/opencode-auto-mode/`.
 
+### TUI-only (`configured-plugins/`, registered in `cli.json`)
+
+| Plugin | What it does |
+|--------|--------------|
+| `opencode-vim` | Fork of `opencode-vim`: Vim editing in the prompt plus a Vim command line in the footer. `:` in NORMAL runs slash commands (`:models`, `:exit`, Tab cycles completions); in VISUAL it opens `:'<,'>` for `s/pat/rep/g`, `d`, `y`, `sort`, `!cmd` and `send`. `%s/…` edits the whole prompt. In SESSION mode `/` searches what is on screen, `/!` the whole loaded transcript; `n` / `N` step older / newer. |
+
 ### Auto-loaded (`plugins/`, no options)
 
 | Plugin | What it does |

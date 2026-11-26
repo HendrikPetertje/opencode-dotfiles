@@ -18,3 +18,7 @@
 	path = configured-plugins/opencode-stt
 	url = https://github.com/HendrikPetertje/opencode-stt.git
 	branch = main
+[submodule "configured-plugins/opencode-vim"]
+	path = configured-plugins/opencode-vim
+	url = https://github.com/HendrikPetertje/opencode-vim.git
+	branch = main

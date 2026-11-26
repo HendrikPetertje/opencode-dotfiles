@@ -28,6 +28,15 @@
   },
   "animations": true,
   "plugins": [
-    "opencode-vim@latest"
+    {
+      "package": "./configured-plugins/opencode-vim",
+      "options": {
+        "completion": {
+          "enabled": true,
+          "minWidth": 24,
+          "maxWidth": 24
+        }
+      }
+    }
   ]
 }
