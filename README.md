@@ -183,7 +183,6 @@ error log are in `~/.local/state/opencode-auto-mode/`.
 | Plugin | What it does |
 |--------|--------------|
 | `gemma-think` | Makes Gemma 4 thinking blocks show up correctly (LM Studio) |
-| `opencode-kiro-model-loader` | Git submodule. Keeps the `kiro` provider's model list current via `kiro-cli` (works with the `opencode-kiro` npm plugin) |
 
 ## Memory system
 
