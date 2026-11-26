@@ -21,4 +21,4 @@
 [submodule "configured-plugins/opencode-vim"]
 	path = configured-plugins/opencode-vim
 	url = https://github.com/HendrikPetertje/opencode-vim.git
-	branch = main
+	branch = add-command-bar
